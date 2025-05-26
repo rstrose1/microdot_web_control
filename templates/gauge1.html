@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en" style="width:100%;height:100%">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Pump Status </title>
+    <script src="../static/js/gauge.min.js"></script>
+    <style>body{padding:0;margin:0;background:#000000}
+    </style>
+    <style>
+
+    .myDiv {
+        border: 0px outset black;
+        background-color: rgb(104, 101, 101);
+        text-align: center;
+        font-size: 50px;
+        color: rgb(247, 232, 232)
+    }
+    </style>
+
+
+</head>
+<body style="width:100%;height:100%;text-align:center">
+    <!--
+    <div class="myDiv">
+        <h1>This is a heading in a div element</h1>
+    </div>
+    -->
+
+<canvas id="gauge1"></canvas>
+<div id="console"></div>
+<script>
+
+function updateSection() {
+
+    fetch('/get_pump_data')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('update-section').innerHTML = data.content;
+            document.getElementById('pump-status').innerHTML = data.pump_on_off;
+        });
+        gauge.value = document.getElementById('update-section').innerHTML
+    if (parseInt(gauge.value) < 10) {
+        gauge.valueInt = 1;
+    } else if (parseInt(gauge.value) > 99) {
+        gauge.valueInt = 1;
+    } else {
+        gauge.valueInt = 2;
+    }
+
+    gauge.update()
+
+    fetch('/get_warning_data')
+    .then(response => response.json())
+    .then(warning => {
+        document.getElementById('pump_warning').innerHTML = warning.content;
+    });
+
+
+}
+
+
+setInterval(updateSection, 1000)
+//function timedRefresh(timeoutPeriod){
+  //setTimeout("location.reload(true);", timeoutPeriod);
+//  setTimeout(updateSection(), timeoutPeriod);
+
+//}
+//window.onload = timedRefresh(2000)
+
+
+var gauge = new RadialGauge({
+    renderTo: 'gauge1',
+    width: 800,
+    height: 800,
+    units: 'PSI',
+    title: false,
+    value: 0,
+    minValue: 0,
+    maxValue: 100,
+    majorTicks: [
+        '0','10','20','30','40','50','60','70','80','90','100'
+    ],
+    minorTicks: 2,
+    strokeTicks: false,
+    highlights: [
+        { from: 0, to: 20, color: 'rgba(255,0,0,.5)' },
+        { from: 20, to: 30, color: 'rgba(255,255,0,.75)' },
+        { from: 30, to: 50, color: 'rgba(0,255,0,1)' },
+        { from: 50, to: 60, color: 'rgba(255,255,0,.75)' },
+        { from: 60, to: 100, color: 'rgba(255,0,0,.5)' }
+    ],
+    colorPlate: '#222',
+    colorMajorTicks: '#f5f5f5',
+    colorMinorTicks: '#f0f0f0',
+    colorTitle: '#fff',
+    colorUnits: '#ccc',
+    colorNumbers: '#eee',
+    colorNeedle: 'rgba(240, 128, 128, 1)',
+    colorNeedleEnd: 'rgba(255, 160, 122, .9)',
+    valueBox: true,
+    animationRule: 'bounce',
+    animationDuration: 500,
+    valueInt: 1
+}).draw();
+
+</script>
+
+<p id="update-section" style="color:rgb(255, 255, 0)">
+</p>
+
+<div class="myDiv"></div>
+<p id="pump-status" style="color:rgb(255, 255, 0)">
+</p>
+</div>
+
+<div class="myDiv">
+<p id="pump_warning" style="color:aliceblue"></p>
+</div>
+
+
+}
+</body>
+</html>

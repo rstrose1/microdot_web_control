@@ -1,0 +1,18 @@
+<!--base.html-->
+<!DOCTYPE html>
+<html>
+  <head>
+        <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body>
+      <nav>
+            <!-- navigation menu will go in here -->
+      </nav>
+      <div class="content">
+            {% block content %}{% endblock %}
+      </div>
+      <footer>
+            <!-- the footer code will go in here -->
+      </footer>
+  </body>
+</html>
