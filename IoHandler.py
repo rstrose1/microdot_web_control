@@ -2,6 +2,7 @@
 from machine import Pin, ADC
 import neopixel
 import time
+import uasyncio
 
 
 class IoHandler:
@@ -116,8 +117,8 @@ class IoHandler:
     # voltage sensor handler
     @classmethod
     def get_voltage_reading(cls):
-        voltage_value = cls.voltage_sensor.read_u16() * cls.conversion_factor
-        return voltage_value
+        voltage_reading = cls.voltage_sensor.read_u16() * cls.conversion_factor
+        return voltage_reading
 
     # pressure sensor handler
     @classmethod

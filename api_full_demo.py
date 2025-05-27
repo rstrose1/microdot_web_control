@@ -251,11 +251,20 @@ async def handle_request(reader, writer):
                 # unknown action
                 #response_builder.set_status(404)
                 pressure = IoHandler.get_pressure_reading()
-                voltage = IoHandler.get_voltage_reading()
-                if voltage < 2.6:
+                samples = []
+                sampling_rate = 120  # Hz
+                while (len(samples) < sampling_rate):
+                    voltage = IoHandler.get_voltage_reading()
+                    samples.append(voltage)
+                    await uasyncio.sleep(0)
+
+                average_voltage = sum(samples) / len(samples)
+
+                if average_voltage < 2.6:
                     pump_on_off = "PUMP ON"
                 else:
                     pump_on_off = "PUMP OFF"
+
                 data = {
                     'content': pressure,
                     'pump_on_off': pump_on_off
@@ -278,68 +287,15 @@ async def handle_request(reader, writer):
     except OSError as e:
         print('connection error ' + str(e.errno) + " " + str(e))
 
-def open_a_socket(pico_ip):
-    addr = (pico_ip, 80)
-    s = socket.socket()
-    s.bind(addr)
-    s.listen(1)
-    print('listening on', addr)
-
-
-async def start_server():
-
-    SSID = "ROW"
-    SSI_PASSWORD = "macLinks"
-    #Test the web page showing the Gauge UI
-    sta_if = network.WLAN(network.STA_IF)
-    if not sta_if.isconnected():
-        sta_if.active(True)
-
-    if not sta_if.isconnected():
-        sta_if.connect(SSID, SSI_PASSWORD)
-        print('Connecting to network...')
-        while not sta_if.isconnected():
-            pass # Wait for connection
-
-    ip = sta_if.ifconfig()[0]
-    print('Connected! Network config:', sta_if.ifconfig())
-    print('IP address:', ip)
-
-
-    print("Starting web server")
-    # create a socket and bind to the address
-    print('Setting up webserver...')
-    #server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
-
-    open_a_socket(ip)
-
-    index_web_page = GAUGE_WEB_PAGE
-
-    rolling_window_size = 3
-    q = Queue([],rolling_window_size)
-    config_q = Queue([],rolling_window_size)
-    voltage_q = Queue([],rolling_window_size)
-    test_pump_psi = 20
-    max_psi = 50
-    min_psi = 30
-    user_info = {}
-    #q.append(test_pump_psi)
-    pw = PumpWebServer(__name__, q, config_q, voltage_q, max_psi, min_psi, user_info, index_web_page)
-    pw.run(ip, 8080, debug=True)
-
-
 async def main():
 
     print('Setting up webserver...')
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
     uasyncio.create_task(server)
-
-    #uasyncio.create_task(start_server())
     uasyncio.create_task(detect_voltage())
     uasyncio.create_task(detect_pressure())
 
-    # main async loop on first core
-    # just pulse the red led
+    # just pulse the on board led for sanity check that the code is running
     while True:
         IoHandler.blink_onboard_led()
         await uasyncio.sleep(1)
