@@ -173,8 +173,8 @@ async def handle_request(reader, writer):
         response_builder = ResponseBuilder()
 
         # filter out api request
-        #if request.url_match("/api"):
-        if request.url_match("/get_pump_data"):
+        if request.url_match("/api"):
+        #if request.url_match("/get_pump_data"):
 
             action = request.get_action()
             if action == 'readPot':
@@ -247,10 +247,8 @@ async def handle_request(reader, writer):
                     'rgb_colours': rgb_colours
                 }
                 response_builder.set_body_from_dict(response_obj)
-            else:
-                # unknown action
-                #response_builder.set_status(404)
-                pressure = IoHandler.get_pressure_reading()
+            elif action == 'get_pump_status':
+                psi = IoHandler.get_pressure_reading()
                 samples = []
                 sampling_rate = 120  # Hz
                 while (len(samples) < sampling_rate):
@@ -265,14 +263,23 @@ async def handle_request(reader, writer):
                 else:
                     pump_on_off = "PUMP OFF"
 
+                if psi < 20:
+                    warning_str = "PUMP PRESSURE LOW!"
+                elif psi > 80:
+                    warning_str = "PUMP PRESSURE HIGH!"
+                else:
+                    warning_str = ''
+
                 data = {
-                    'content': pressure,
-                    'pump_on_off': pump_on_off
+                    'pressure': psi,
+                    'pump_on_off': pump_on_off,
+                    'warning': warning_str
                 }
+
                 response_builder.set_body_from_dict(data)
-
-
-
+            else:
+                # unknown action
+                response_builder.set_status(404)
 
         # try to serve static file
         else:
