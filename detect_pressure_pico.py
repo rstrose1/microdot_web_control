@@ -25,6 +25,7 @@ class PressureSensor(object):
         # Set up the spinner
         self.spinner = "|/-\\"
         self.spinner_index = 0
+        self.send_email_flag = False
 
     def get_pump_pressure(self):
         adc_value = self.ADC_pressure.read_u16()
@@ -44,6 +45,7 @@ class PressureSensor(object):
 
                 if pump_pressure <= self.min_psi:
                     """ Pump pressure is too low! send alarm! """
+
                     #print("PUMP PRESSURE IS TOO LOW!")
 
                 if pump_pressure >= self.max_psi:

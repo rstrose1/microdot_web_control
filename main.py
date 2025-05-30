@@ -9,11 +9,60 @@ from IoHandler import IoHandler
 from detect_voltage_pico import VoltageSensor
 from detect_pressure_pico import PressureSensor
 from sys import path
+import umail
+import time
 
 from collections import deque as Queue
 FLASK_TEMPLATE_DIR = "/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
 GAUGE_WEB_PAGE = FLASK_TEMPLATE_DIR + GAUGE_HTML_FILE
+WEB_LINK = "http://192.168.1.10/"
+
+# Email details
+"""
+sender_email = "rstrose1@yahoo.com"
+sender_name = 'Raspberry Pi Pico'
+sender_app_password = 'fidi innt rwqy xgeu'
+recipient_email ="takeella@gmail.com"
+"""
+
+sender_email = "takeella@gmail.com"
+sender_name = 'Raspberry Pi Pico'
+sender_app_password = 'dlvk fxtg mdbr hngv'
+recipient_email = "rstrose1@yahoo.com"
+email_flag = False
+
+
+email_subject ='Hello from RPi Pico W'
+
+def prepare_email(msg):
+    """
+    Prepare the body of the email based on the pump status.
+    """
+    body = msg
+
+    return body
+
+def send_email(body):
+# Send the email
+
+    smtp = umail.SMTP('smtp.gmail.com', 465, ssl=True) # Gmail's SSL port
+
+    try:
+        smtp.login(sender_email, sender_app_password)
+        smtp.to(recipient_email)
+        smtp.write("From:" + sender_name + "<"+ sender_email+">\n")
+        smtp.write("Subject:" + email_subject + "\n")
+        smtp.write(body)
+
+        smtp.send()
+        print("Email Sent Successfully")
+
+    except Exception as e:
+        print("Failed to send email:", e)
+    finally:
+        smtp.quit()
+
 
 # connect to WiFi
 # this will block until connected
@@ -30,7 +79,9 @@ async def handle_request(reader, writer):
         # filter out api request
         if request.url_match("/api"):
             action = request.get_action()
-            if action == 'get_pump_status':
+            if action == 'get_another_page':
+                print("Hear we are from the About.html page!")
+            elif action == 'get_pump_status':
                 psi = IoHandler.get_pressure_reading()
                 samples = []
                 sampling_rate = 120  # Hz
@@ -48,8 +99,19 @@ async def handle_request(reader, writer):
 
                 if psi < 20:
                     warning_str = "PUMP PRESSURE LOW!"
+                    global email_flag
+                    if email_flag == False:
+                        body = prepare_email(warning_str)
+                        #send_email(body)
+                        email_flag = True
+
                 elif psi > 80:
                     warning_str = "PUMP PRESSURE HIGH!"
+                    global email_flag
+                    if email_flag == False:
+                        body = prepare_email(warning_str)
+                        #send_email(body)
+                        email_flag = True
                 else:
                     warning_str = ''
 

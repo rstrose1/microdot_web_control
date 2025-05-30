@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>About</title>
+  </head>
+
+<body>
+
+<script>
+
+function getAnotherPage() {
+    const formData = new FormData();
+    formData.append("action", "get_another_page");
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = function() {
+        data = JSON.parse(this.responseText);
+    }
+    xhttp.open("POST", "/api", true);
+    xhttp.send(formData);
+
+}
+
+setInterval(getAnotherPage, 1000)
+
+</script>
+<p style="font-size: 20px; color:#1F9AFE;">
+<a href="../templates/gauge1.html">Pump Status</a>
+</p>
+</body>
+</html>
