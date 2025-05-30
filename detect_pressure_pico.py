@@ -32,8 +32,8 @@ class PressureSensor(object):
         voltage = adc_value * conversion_factor
         psi = round(((voltage * 95.48) - 34.81), 2)
 
-        print(f"ADC value:{adc_value:.2f} Voltage:{voltage:.2f} Pressure:{psi:.2f} {self.spinner[self.spinner_index]} ")
-        print("\33[2A")
+        ##print(f"ADC value:{adc_value:.2f} Voltage:{voltage:.2f} Pressure:{psi:.2f} {self.spinner[self.spinner_index]} ")
+        #print("\33[2A")
         self.spinner_index = (self.spinner_index + 1) % len(self.spinner)
 
         return psi

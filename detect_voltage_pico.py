@@ -55,8 +55,8 @@ class VoltageSensor(object):
                     msg = "OFF "
                     led.off()  # Turn LED off (set pin low)
 
-                print(f"Voltage:{voltage:.2f} Max:{max_value:.2f} Min:{min_value:.2f} PUMP {msg} {spinner[spinner_index]} ")
-                print("\33[2A")
+                #print(f"Voltage:{voltage:.2f} Max:{max_value:.2f} Min:{min_value:.2f} PUMP {msg} {spinner[spinner_index]} ")
+                #print("\33[2A")
                 self.samples.clear()
                 spinner_index = (spinner_index + 1) % len(spinner)
                 if self.pump_on_off_status != msg:
