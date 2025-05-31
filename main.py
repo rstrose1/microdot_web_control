@@ -40,6 +40,9 @@ led_state = 0
 # Create a Pin object for the onboard LED, configure it as an output
 led = Pin("LED", Pin.OUT)
 
+ssid = ''
+pwd = ''
+
 
 email_subject ='Hello from RPi Pico W'
 
@@ -70,13 +73,6 @@ def send_email(body):
         print("Failed to send email:", e)
     finally:
         smtp.quit()
-
-
-# connect to WiFi
-# this will block until connected
-if not WiFiConnection.start_station_mode(True):
-    raise RuntimeError('network connection failed')
-
 
 async def handle_request(reader, writer):
     try:
@@ -198,6 +194,8 @@ def extract_data_from_ble(data):
 def on_rx(data):
     print("Data received: ", data)  # Print the received data
     global led_state  # Access the global variable led_state
+    global ssid
+    global pwd
     # get wifi SSID over bluetooth connection
     if 'ssid' in data:
         led.value(not led_state)  # Toggle the LED state (on/off)
@@ -206,7 +204,7 @@ def on_rx(data):
         print(ssid)
 
     # get wifi password over bluetooth connection
-    elif 'pwd' in data:
+    elif 'pwd' or 'password' in data:
         led.value(not led_state)  # Toggle the LED state (on/off)
         led_state = 1 - led_state  # Update the LED state
         pwd = extract_data_from_ble(data)
@@ -234,12 +232,29 @@ async def start_bluetooth():
 
 async def main():
 
+    # connect to bluetooth
+    print("Starting BlueTooth")
+    uasyncio.create_task(start_bluetooth())
+
+    print("Starting WiFi")
+    wifi = WiFiConnection()
+    while True:
+        if not wifi.start_station_mode(True):
+            if ssid is not '' and pwd is not '':
+                print("Updating wifi credentials from BLE...")
+                wifi.update_credentials(ssid, pwd)
+        else:
+            break
+
+        await uasyncio.sleep(0)
+        #raise RuntimeError('network connection failed')
+
     print('Setting up webserver...')
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
     uasyncio.create_task(server)
     uasyncio.create_task(detect_voltage())
     uasyncio.create_task(detect_pressure())
-    uasyncio.create_task(start_bluetooth())
+
 
 
     # just pulse the on board led for sanity check that the code is running
