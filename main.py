@@ -240,9 +240,11 @@ async def main():
     wifi = WiFiConnection()
     while True:
         if not wifi.start_station_mode(True):
+            # ssid and pwd obtained via bluetooth communication from user
             if ssid is not '' and pwd is not '':
                 print("Updating wifi credentials from BLE...")
-                wifi.update_credentials(ssid, pwd)
+                credentials = {"ssid": ssid, "password": pwd }
+                wifi.update_credentials("NetworkCredentials.py", credentials)
         else:
             break
 

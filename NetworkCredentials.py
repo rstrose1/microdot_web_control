@@ -1,3 +1,3 @@
 class NetworkCredentials:
-    ssid = 'ROW'
+    ssid = ''
     password = ''

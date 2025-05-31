@@ -19,33 +19,42 @@ class WiFiConnection:
         self.ssid = ssid
         self.password = password
 
-    def update_credentials(self, ssid, pwd):
-        WiFiConnection.ssid = ssid
-        WiFiConnection.password = pwd
-        # Cant figure out a way as yet to update elements in file all at once
-        # so will do one by one for now.
-        # some how f.writelines doesn't appear to be woring in micropython --need to investigate further
-        try:
-            with open("NetworkCredentials.py", "r") as f:
-                file_content = f.read()
-            #Modify the content
-            replacement_ssid = f"ssid = '{ssid}'"
-            updated_content = file_content.replace(f"ssid = ''", replacement_ssid)
-            with open("NetworkCredentials.py", "w") as f:
-                f.write(updated_content)
-            f.close()
+    def modify_credential_file(self, filename, original, replacement):
+        print(filename)
+        print(original)
+        print(replacement)
 
-            with open("NetworkCredentials.py", "r") as f:
+        try:
+            with open(filename, "r") as f:
                 file_content = f.read()
             #Modify the content
-            replacement_pwd = f"password = '{pwd}'"
-            updated_content = file_content.replace(f"password = ''", replacement_pwd)
-            with open("NetworkCredentials.py", "w") as f:
+            updated_content = file_content.replace(original, replacement)
+            with open(filename, "w") as f:
                 f.write(updated_content)
             f.close()
 
         except Exception as e:
-            print(f"Error updating file: {e}")
+            print(f"Error updating file: {filename}: {e}")
+
+
+    def update_credentials(self, filename, credentials):
+        ssid_value = credentials['ssid']
+        pwd_value = credentials['password']
+
+        WiFiConnection.ssid = ssid_value
+        WiFiConnection.password = pwd_value
+
+        # Save to file
+        # Cant figure out a way as yet to update elements in file all at once
+        # so will do one by one for now.
+        # some how f.writelines doesn't appear to be woring in micropython --need to investigate further
+        original_str = "ssid = ''"
+        replacement_str = f"ssid = '{ssid_value}'"
+        self.modify_credential_file(filename, original_str, replacement_str)
+
+        original_str = "password = ''"
+        replacement_str = f"password = '{pwd_value}'"
+        self.modify_credential_file(filename, original_str, replacement_str)
 
 
     @classmethod
