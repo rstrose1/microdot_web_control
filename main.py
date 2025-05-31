@@ -26,7 +26,7 @@ WEB_LINK = "http://192.168.1.10/"
 """
 sender_email = "rstrose1@yahoo.com"
 sender_name = 'Raspberry Pi Pico'
-sender_app_password = 'fidi innt rwqy xgeu'
+sender_app_password = ''
 recipient_email ="takeella@gmail.com"
 """
 
