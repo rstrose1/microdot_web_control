@@ -42,6 +42,7 @@ led = Pin("LED", Pin.OUT)
 
 ssid = ''
 pwd = ''
+send_bluetooth_flag = False
 
 
 email_subject ='Hello from RPi Pico W'
@@ -226,6 +227,10 @@ async def start_bluetooth():
     while True:
         if sp.is_connected():  # Check if a BLE connection is established
             sp.on_write(on_rx)  # Set the callback function for data reception
+            global send_bluetooth_flag
+            if send_bluetooth_flag:
+                sp.send("TX - Updating credentials from BLE")
+                send_bluetooth_flag = False
 
         await uasyncio.sleep(0)
 
@@ -245,6 +250,9 @@ async def main():
                 print("Updating wifi credentials from BLE...")
                 credentials = {"ssid": ssid, "password": pwd }
                 wifi.update_credentials("NetworkCredentials.py", credentials)
+                global send_bluetooth_flag
+                send_bluetooth_flag = True
+
         else:
             break
 
