@@ -5,7 +5,7 @@ import bluetooth
 import random
 import struct
 import time
-from connectPicoAndroidBluetoothAdvertising import advertising_payload
+from bluetooth_advertisiing import advertising_payload
 
 from micropython import const
 

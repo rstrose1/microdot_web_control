@@ -11,6 +11,10 @@ from detect_pressure_pico import PressureSensor
 from sys import path
 import umail
 import time
+from machine import Pin
+import bluetooth
+from bluetooth_peripheral import BLESimplePeripheral
+
 
 from collections import deque as Queue
 FLASK_TEMPLATE_DIR = "/templates/"
@@ -28,9 +32,13 @@ recipient_email ="takeella@gmail.com"
 
 sender_email = "takeella@gmail.com"
 sender_name = 'Raspberry Pi Pico'
-sender_app_password = 'dlvk fxtg mdbr hngv'
+sender_app_password = ''
 recipient_email = "rstrose1@yahoo.com"
 email_flag = False
+# Initialize the LED state to 0 (off)
+led_state = 0
+# Create a Pin object for the onboard LED, configure it as an output
+led = Pin("LED", Pin.OUT)
 
 
 email_subject ='Hello from RPi Pico W'
@@ -138,19 +146,6 @@ async def handle_request(reader, writer):
     except OSError as e:
         print('connection error ' + str(e.errno) + " " + str(e))
 
-async def main():
-
-    print('Setting up webserver...')
-    server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
-    uasyncio.create_task(server)
-    uasyncio.create_task(detect_voltage())
-    uasyncio.create_task(detect_pressure())
-
-    # just pulse the on board led for sanity check that the code is running
-    while True:
-        IoHandler.blink_onboard_led()
-        await uasyncio.sleep(5)
-
 async def detect_pressure():
     try:
         print('Starting pressure sensor')
@@ -193,6 +188,64 @@ async def detect_voltage():
 
     except:
         print("Some error/exception occurred")
+
+
+def extract_data_from_ble(data):
+    data_list = data.split()
+    return data_list[1].decode('utf-8')
+
+# Define a callback function to handle received data
+def on_rx(data):
+    print("Data received: ", data)  # Print the received data
+    global led_state  # Access the global variable led_state
+    # get wifi SSID over bluetooth connection
+    if 'ssid' in data:
+        led.value(not led_state)  # Toggle the LED state (on/off)
+        led_state = 1 - led_state  # Update the LED state
+        ssid = extract_data_from_ble(data)
+        print(ssid)
+
+    # get wifi password over bluetooth connection
+    elif 'pwd' in data:
+        led.value(not led_state)  # Toggle the LED state (on/off)
+        led_state = 1 - led_state  # Update the LED state
+        pwd = extract_data_from_ble(data)
+        print(pwd)
+
+    else:
+        print("unknown data")
+
+
+async def start_bluetooth():
+    print("Starting bluetooth...")
+    # Create a Bluetooth Low Energy (BLE) object
+    ble = bluetooth.BLE()
+
+    # Create an instance of the BLESimplePeripheral class with the BLE object
+    sp = BLESimplePeripheral(ble)
+
+    # Start an infinite loop
+    while True:
+        if sp.is_connected():  # Check if a BLE connection is established
+            sp.on_write(on_rx)  # Set the callback function for data reception
+
+        await uasyncio.sleep(0)
+
+
+async def main():
+
+    print('Setting up webserver...')
+    server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
+    uasyncio.create_task(server)
+    uasyncio.create_task(detect_voltage())
+    uasyncio.create_task(detect_pressure())
+    uasyncio.create_task(start_bluetooth())
+
+
+    # just pulse the on board led for sanity check that the code is running
+    while True:
+        IoHandler.blink_onboard_led()
+        await uasyncio.sleep(5)
 
 try:
     # start asyncio tasks on first core

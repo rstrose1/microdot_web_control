@@ -3,6 +3,7 @@
 from micropython import const
 import struct
 import bluetooth
+import asyncio
 
 # Advertising payloads are repeated packets of the following form:
 #   1 byte data length (N + 1)
