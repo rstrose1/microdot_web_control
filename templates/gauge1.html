@@ -31,7 +31,6 @@ function getReadingFromPico() {
     xhttp.onload = function() {
         data = JSON.parse(this.responseText);
         gauge.value = data['pressure'];
-        document.getElementById('update-section').innerHTML = data['pressure'];
         document.getElementById('pump-status').innerHTML = data['pump_on_off'];
         document.getElementById('pump-warning').innerHTML = data['warning'];
     }
@@ -80,13 +79,6 @@ var gauge = new RadialGauge({
 
 </script>
 
-
-<p style="font-size: 20px; color:#1F9AFE;">
-<a href="../templates/about.html">About Page</a>
-</p>
-
-<p id="update-section" style="color:rgb(255, 255, 0)"></p>
-
 <div class="myDiv"></div>
 <p id="pump-status" style="color:rgb(255, 255, 0)"></p>
 </div>
@@ -94,5 +86,10 @@ var gauge = new RadialGauge({
 <div class="myDiv">
 <p id="pump-warning" style="color:aliceblue"></p>
 </div>
+
+<p style="font-size: 20px; color:#1F9AFE;">
+<a href="../templates/about.html">About Page</a>
+</p>
+
 </body>
 </html>
