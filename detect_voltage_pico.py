@@ -12,7 +12,7 @@ import _thread
 
 
 class VoltageSensor(object):
-    def __init__(self, channel, ADC, out_q=None, threshold_volt_ref=2.8, sampling_rate=120):
+    def __init__(self, channel, ADC, out_q, threshold_volt_ref=2.8, sampling_rate=120):
         self.channel = channel
         self.ADC = ADC
         self.out_q = out_q
@@ -25,7 +25,7 @@ class VoltageSensor(object):
     def get_pump_on_off_status(self):
         return self.pump_on_off_status
 
-    async def monitor_voltage_sensor(self,  timeout=10):
+    async def monitor_voltage_sensor(self, timeout=10, msg_deque=None):
         # Set up the spinner
         spinner = "|/-\\"
         spinner_index = 0
@@ -48,6 +48,11 @@ class VoltageSensor(object):
                 voltage = sum(self.samples) / len(self.samples)
                 max_value = max(self.samples)
                 min_value = min(self.samples)
+
+                # The following lines work to send the avg voltage readings to BLE
+                #str = f"Voltage: {voltage}\n"
+                #msg_deque.append(str)
+
                 if voltage < self.threshold_volt_ref:
                     msg = "ON  "
                     led.on()  # Turn LED on (set pin high)

@@ -2,6 +2,7 @@
 # combines multi core and multi tasking
 import machine
 from RequestParser import RequestParser
+#import asyncio
 import uasyncio
 from ResponseBuilder import ResponseBuilder
 from WiFiConnection import WiFiConnection
@@ -14,9 +15,8 @@ import time
 from machine import Pin
 import bluetooth
 from bluetooth_peripheral import BLESimplePeripheral
+from collections import deque
 
-
-from collections import deque as Queue
 FLASK_TEMPLATE_DIR = "/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
 GAUGE_WEB_PAGE = FLASK_TEMPLATE_DIR + GAUGE_HTML_FILE
@@ -42,8 +42,8 @@ led = Pin("LED", Pin.OUT)
 
 ssid = ''
 pwd = ''
+ip_flag = False
 send_bluetooth_flag = False
-
 
 email_subject ='Hello from RPi Pico W'
 
@@ -165,20 +165,23 @@ async def detect_pressure():
         print("Some error/exception occurred")
 
 #
-async def detect_voltage():
+async def detect_voltage(msg_deque):
     ADC_CHANNEL = 0
     voltage_q = "placeHolder"
     threshold_volt_ref = 2.6
     sampling_rate = 120  # Hz
     timeout = 2200
 
-    print("Setting up MCP3008 ADC for voltage sensor..")
+    str = "Setting up MCP3008 ADC for voltage sensor..\n"
+    msg_deque.append(str)
+
     try:
         vs = machine.ADC(ADC_CHANNEL)
-        mv = VoltageSensor(ADC_CHANNEL, vs, voltage_q, threshold_volt_ref, sampling_rate)
+        mv = VoltageSensor(ADC_CHANNEL, vs, msg_deque, threshold_volt_ref, sampling_rate)
 
-        print("Start the voltage sensor monitoring")
-        await mv.monitor_voltage_sensor(timeout)
+        str = "Start the voltage sensor monitoring \n"
+        msg_deque.append(str)
+        await mv.monitor_voltage_sensor(timeout, msg_deque)
 
     except KeyboardInterrupt:
         pass
@@ -193,29 +196,40 @@ def extract_data_from_ble(data):
 
 # Define a callback function to handle received data
 def on_rx(data):
-    print("Data received: ", data)  # Print the received data
+    print("Pico Data received: ", data)  # Print the received data
     global led_state  # Access the global variable led_state
     global ssid
     global pwd
+    global ip_flag
     # get wifi SSID over bluetooth connection
-    if 'ssid' in data:
+    if 'ip' in data:
+        ip_flag = True
+
+    elif 'ssid' in data:
         led.value(not led_state)  # Toggle the LED state (on/off)
         led_state = 1 - led_state  # Update the LED state
         ssid = extract_data_from_ble(data)
         print(ssid)
 
     # get wifi password over bluetooth connection
-    elif 'pwd' or 'password' in data:
+    elif 'pwd' in data:
+        led.value(not led_state)  # Toggle the LED state (on/off)
+        led_state = 1 - led_state  # Update the LED state
+        pwd = extract_data_from_ble(data)
+        print(pwd)
+
+    elif 'password' in data:
         led.value(not led_state)  # Toggle the LED state (on/off)
         led_state = 1 - led_state  # Update the LED state
         pwd = extract_data_from_ble(data)
         print(pwd)
 
     else:
-        print("unknown data")
+        print("unknown data\n")
 
+    return
 
-async def start_bluetooth():
+async def start_bluetooth(msg_deque):
     print("Starting bluetooth...")
     # Create a Bluetooth Low Energy (BLE) object
     ble = bluetooth.BLE()
@@ -227,31 +241,47 @@ async def start_bluetooth():
     while True:
         if sp.is_connected():  # Check if a BLE connection is established
             sp.on_write(on_rx)  # Set the callback function for data reception
-            global send_bluetooth_flag
-            if send_bluetooth_flag:
-                sp.send("TX - Updating credentials from BLE")
-                send_bluetooth_flag = False
+            try:
+                if len(msg_deque) > 0:
+                    snd_msg = msg_deque.popleft()
+                    sp.send(snd_msg)
+            except Exception:
+                pass
 
         await uasyncio.sleep(0)
 
 
 async def main():
 
+    msg = []
+    msg_deque = deque(msg, 20)
+
     # connect to bluetooth
     print("Starting BlueTooth")
-    uasyncio.create_task(start_bluetooth())
+    uasyncio.create_task(start_bluetooth(msg_deque))
 
     print("Starting WiFi")
     wifi = WiFiConnection()
     while True:
         if not wifi.start_station_mode(True):
+
+            global send_bluetooth_flag
+            if send_bluetooth_flag == False:
+                str = "Enter your wifi credentials now\n"
+                msg_deque.append(str)
+                send_bluetooth_flag = True
+                await uasyncio.sleep(0)
+
             # ssid and pwd obtained via bluetooth communication from user
             if ssid is not '' and pwd is not '':
-                print("Updating wifi credentials from BLE...")
+                str = "Updating wifi credentials from BLE...\n"
+                print(str)
                 credentials = {"ssid": ssid, "password": pwd }
                 wifi.update_credentials("NetworkCredentials.py", credentials)
-                global send_bluetooth_flag
-                send_bluetooth_flag = True
+                try:
+                    msg_deque.append(str)
+                except Exception:
+                    pass
 
         else:
             break
@@ -259,16 +289,22 @@ async def main():
         await uasyncio.sleep(0)
         #raise RuntimeError('network connection failed')
 
-    print('Setting up webserver...')
+    msg_str = 'Setting up webserver...'
+    msg_deque.append(msg_str)
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
     uasyncio.create_task(server)
-    uasyncio.create_task(detect_voltage())
+    uasyncio.create_task(detect_voltage(msg_deque))
     uasyncio.create_task(detect_pressure())
-
-
 
     # just pulse the on board led for sanity check that the code is running
     while True:
+        global ip_flag
+        if ip_flag == True:
+            print(f"Ip Address: {wifi.ip}")
+            str = f"IP Address: http://{wifi.ip}\n"
+            msg_deque.append(str)
+            ip_flag = False
+
         IoHandler.blink_onboard_led()
         await uasyncio.sleep(5)
 
