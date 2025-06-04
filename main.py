@@ -43,8 +43,10 @@ led = Pin("LED", Pin.OUT)
 ssid = ''
 pwd = ''
 ip_flag = False
+psi_flag = False
+volt_flag = False
+email = ''
 send_bluetooth_flag = False
-
 email_subject ='Hello from RPi Pico W'
 
 def prepare_email(msg):
@@ -56,8 +58,12 @@ def prepare_email(msg):
     return body
 
 def send_email(body):
-# Send the email
+    """
+    Sends an email using the provided body content.
 
+    Args:
+        body (str): The content of the email to be sent.
+    """
     smtp = umail.SMTP('smtp.gmail.com', 465, ssl=True) # Gmail's SSL port
 
     try:
@@ -75,7 +81,24 @@ def send_email(body):
     finally:
         smtp.quit()
 
+async def get_voltage_reading():
+    samples = []
+    sampling_rate = 120  # Hz
+    while (len(samples) < sampling_rate):
+        voltage = IoHandler.get_voltage_reading()
+        samples.append(voltage)
+        await uasyncio.sleep(0)
+
+    return sum(samples) / len(samples)
+
 async def handle_request(reader, writer):
+    """
+    Handles incoming HTTP requests, parses them, and sends appropriate responses.
+
+    Args:
+        reader (StreamReader): The input stream to read the request data.
+        writer (StreamWriter): The output stream to send the response data.
+    """
     try:
         raw_request = await reader.read(2048)
         request = RequestParser(raw_request)
@@ -88,15 +111,7 @@ async def handle_request(reader, writer):
                 print("Hear we are from the About.html page!")
             elif action == 'get_pump_status':
                 psi = IoHandler.get_pressure_reading()
-                samples = []
-                sampling_rate = 120  # Hz
-                while (len(samples) < sampling_rate):
-                    voltage = IoHandler.get_voltage_reading()
-                    samples.append(voltage)
-                    await uasyncio.sleep(0)
-
-                average_voltage = sum(samples) / len(samples)
-
+                average_voltage = await get_voltage_reading()
                 if average_voltage < 2.6:
                     pump_on_off = "PUMP ON"
                 else:
@@ -164,8 +179,14 @@ async def detect_pressure():
     except:
         print("Some error/exception occurred")
 
-#
+
 async def detect_voltage(msg_deque):
+    """
+    Monitors the voltage sensor using the MCP3008 ADC and updates a message deque with status messages.
+
+    Args:
+        msg_deque (collections.deque): A deque to store status messages for Bluetooth communication.
+    """
     ADC_CHANNEL = 0
     voltage_q = "placeHolder"
     threshold_volt_ref = 2.6
@@ -191,36 +212,59 @@ async def detect_voltage(msg_deque):
 
 
 def extract_data_from_ble(data):
+    """ Extracts specific data from a byte string received over Bluetooth."""
+    print(len(data))
     data_list = data.split()
+    print(data_list)
+
     return data_list[1].decode('utf-8')
 
-# Define a callback function to handle received data
+
 def on_rx(data):
+    """
+    Callback function to handle data received via Bluetooth.
+
+    Args:
+        data (bytes): The data received from the Bluetooth connection.
+    """
     print("Pico Data received: ", data)  # Print the received data
     global led_state  # Access the global variable led_state
     global ssid
     global pwd
     global ip_flag
+    global email
+    global psi_flag
+    global volt_flag
     # get wifi SSID over bluetooth connection
     if 'ip' in data:
         ip_flag = True
 
+    elif 'psi' in data:
+        psi_flag = True
+
+    elif 'volt' in data:
+        volt_flag = True
+
     elif 'ssid' in data:
-        led.value(not led_state)  # Toggle the LED state (on/off)
-        led_state = 1 - led_state  # Update the LED state
+#        led.value(not led_state)  # Toggle the LED state (on/off)
+#       led_state = 1 - led_state  # Update the LED state
         ssid = extract_data_from_ble(data)
         print(ssid)
 
+    elif 'email' in data:
+        email = extract_data_from_ble(data)
+        print(email)
+
     # get wifi password over bluetooth connection
     elif 'pwd' in data:
-        led.value(not led_state)  # Toggle the LED state (on/off)
-        led_state = 1 - led_state  # Update the LED state
+#        led.value(not led_state)  # Toggle the LED state (on/off)
+#        led_state = 1 - led_state  # Update the LED state
         pwd = extract_data_from_ble(data)
         print(pwd)
 
     elif 'password' in data:
-        led.value(not led_state)  # Toggle the LED state (on/off)
-        led_state = 1 - led_state  # Update the LED state
+#        led.value(not led_state)  # Toggle the LED state (on/off)
+#        led_state = 1 - led_state  # Update the LED state
         pwd = extract_data_from_ble(data)
         print(pwd)
 
@@ -230,6 +274,10 @@ def on_rx(data):
     return
 
 async def start_bluetooth(msg_deque):
+    """
+    Initializes and manages the Bluetooth Low Energy (BLE) connection.
+    Sends messages from a deque to connected BLE devices and processes received data.
+    """
     print("Starting bluetooth...")
     # Create a Bluetooth Low Energy (BLE) object
     ble = bluetooth.BLE()
@@ -252,7 +300,7 @@ async def start_bluetooth(msg_deque):
 
 
 async def main():
-
+    """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
     msg = []
     msg_deque = deque(msg, 20)
 
@@ -299,11 +347,29 @@ async def main():
     # just pulse the on board led for sanity check that the code is running
     while True:
         global ip_flag
+        global psi_flag
+        global volt_flag
         if ip_flag == True:
             print(f"Ip Address: {wifi.ip}")
             str = f"IP Address: http://{wifi.ip}\n"
             msg_deque.append(str)
             ip_flag = False
+
+        if psi_flag == True:
+            psi = IoHandler.get_pressure_reading()
+            str = f"Pump pressure: {psi:.1f} PSI\n"
+            msg_deque.append(str)
+            psi_flag = False
+
+        if volt_flag == True:
+            average_voltage = await get_voltage_reading()
+            if average_voltage < 2.6:
+                status = "pump is ON"
+            else:
+                status = "pump is OFF"
+            str = f"Sensor voltage: {average_voltage:.2f} V - {status} \n"
+            msg_deque.append(str)
+            volt_flag = False
 
         IoHandler.blink_onboard_led()
         await uasyncio.sleep(5)

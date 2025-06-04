@@ -20,9 +20,15 @@ class WiFiConnection:
         self.password = password
 
     def modify_credential_file(self, filename, original, replacement):
-        print(filename)
-        print(original)
-        print(replacement)
+        """Modify the content of a file by replacing original string with replacement string."""
+
+        if not filename:
+            print("Filename is empty, cannot modify file.")
+            return
+
+        if not original or not replacement:
+            print("Original or replacement string is empty, cannot modify file.")
+            return
 
         try:
             with open(filename, "r") as f:
