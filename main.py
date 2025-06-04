@@ -301,12 +301,13 @@ async def start_bluetooth(msg_deque):
 
 async def main():
     """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
-    msg = []
-    msg_deque = deque(msg, 20)
+    ble_msg = []
+    max_ble_msg = 20
+    ble_msg_deque = deque(ble_msg, max_ble_msg)
 
     # connect to bluetooth
     print("Starting BlueTooth")
-    uasyncio.create_task(start_bluetooth(msg_deque))
+    uasyncio.create_task(start_bluetooth(ble_msg_deque))
 
     print("Starting WiFi")
     wifi = WiFiConnection()
@@ -327,7 +328,7 @@ async def main():
                 credentials = {"ssid": ssid, "password": pwd }
                 wifi.update_credentials("NetworkCredentials.py", credentials)
                 try:
-                    msg_deque.append(str)
+                    ble_msg_deque.append(str)
                 except Exception:
                     pass
 
@@ -338,7 +339,7 @@ async def main():
         #raise RuntimeError('network connection failed')
 
     msg_str = 'Setting up webserver...'
-    msg_deque.append(msg_str)
+    ble_msg_deque.append(msg_str)
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
     uasyncio.create_task(server)
     uasyncio.create_task(detect_voltage(msg_deque))
@@ -352,13 +353,13 @@ async def main():
         if ip_flag == True:
             print(f"Ip Address: {wifi.ip}")
             str = f"IP Address: http://{wifi.ip}\n"
-            msg_deque.append(str)
+            ble_msg_deque.append(str)
             ip_flag = False
 
         if psi_flag == True:
             psi = IoHandler.get_pressure_reading()
             str = f"Pump pressure: {psi:.1f} PSI\n"
-            msg_deque.append(str)
+            ble_msg_deque.append(str)
             psi_flag = False
 
         if volt_flag == True:
@@ -368,7 +369,7 @@ async def main():
             else:
                 status = "pump is OFF"
             str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
-            msg_deque.append(str)
+            ble_msg_deque.append(str)
             volt_flag = False
 
         IoHandler.blink_onboard_led()
