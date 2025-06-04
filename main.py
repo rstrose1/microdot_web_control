@@ -367,7 +367,7 @@ async def main():
                 status = "pump is ON"
             else:
                 status = "pump is OFF"
-            str = f"Sensor voltage: {average_voltage:.2f} V - {status} \n"
+            str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
             msg_deque.append(str)
             volt_flag = False
 
