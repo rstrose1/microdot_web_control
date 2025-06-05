@@ -380,7 +380,7 @@ async def main():
     ble_deque.append(msg_str)
 
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
-
+    uasyncio.create_task(server)
     uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
     uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
     uasyncio.create_task(notifications(ble_deque, notify_deque))
