@@ -2,7 +2,6 @@
 # combines multi core and multi tasking
 import machine
 from RequestParser import RequestParser
-#import asyncio
 import uasyncio
 from ResponseBuilder import ResponseBuilder
 from WiFiConnection import WiFiConnection
@@ -319,7 +318,7 @@ async def start_bluetooth(ble_deque):
     # Create an instance of the BLESimplePeripheral class with the BLE object
     sp = BLESimplePeripheral(ble)
 
-    # Start an infinite loop
+    # Start an infinite loop to send ble messages to user
     while True:
         if sp.is_connected():  # Check if a BLE connection is established
             sp.on_write(on_rx)  # Set the callback function for data reception
