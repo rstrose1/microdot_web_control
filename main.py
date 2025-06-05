@@ -15,7 +15,7 @@ import time
 from machine import Pin
 import bluetooth
 from bluetooth_peripheral import BLESimplePeripheral
-from collections import deque
+from ucollections import deque
 
 FLASK_TEMPLATE_DIR = "/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
@@ -158,7 +158,7 @@ async def handle_request(reader, writer):
     except OSError as e:
         print('connection error ' + str(e.errno) + " " + str(e))
 
-async def detect_pressure():
+async def detect_pressure(ble_deque, notify_deque):
     try:
         print('Starting pressure sensor')
 
@@ -180,7 +180,7 @@ async def detect_pressure():
         print("Some error/exception occurred")
 
 
-async def detect_voltage(msg_deque):
+async def detect_voltage(ble_deque, notify_deque):
     """
     Monitors the voltage sensor using the MCP3008 ADC and updates a message deque with status messages.
 
@@ -191,18 +191,17 @@ async def detect_voltage(msg_deque):
     voltage_q = "placeHolder"
     threshold_volt_ref = 2.6
     sampling_rate = 120  # Hz
-    timeout = 2200
 
     str = "Setting up MCP3008 ADC for voltage sensor..\n"
-    msg_deque.append(str)
+    ble_deque.append(str)
 
     try:
         vs = machine.ADC(ADC_CHANNEL)
-        mv = VoltageSensor(ADC_CHANNEL, vs, msg_deque, threshold_volt_ref, sampling_rate)
+        mv = VoltageSensor(ADC_CHANNEL, vs, notify_deque, threshold_volt_ref, sampling_rate)
 
         str = "Start the voltage sensor monitoring \n"
-        msg_deque.append(str)
-        await mv.monitor_voltage_sensor(timeout, msg_deque)
+        ble_deque.append(str)
+        await mv.monitor_voltage_sensor()
 
     except KeyboardInterrupt:
         pass
@@ -273,7 +272,42 @@ def on_rx(data):
 
     return
 
-async def start_bluetooth(msg_deque):
+async def notifications(ble_deque, notify_deque):
+    """ Start an infinite loop to check the message deque """
+    global psi_flag
+    global volt_flag
+
+    while True:
+
+        if len(notify_deque) > 0:
+            get_notify_msg = notify_deque.popleft()
+            if get_notify_msg is not None:
+                print(get_notify_msg)
+                #need to handle cases for turning on external led and/or buzzer
+
+        # the following flags are set in the on_rx callback function
+        # and are used to determine if the pressure or voltage sensor readings
+        # should be sent to the bluetooth device
+        if psi_flag == True:
+            psi = IoHandler.get_pressure_reading()
+            str = f"Pump pressure: {psi:.1f} PSI\n"
+            ble_deque.append(str)
+            psi_flag = False
+
+        if volt_flag == True:
+            average_voltage = await get_voltage_reading()
+            if average_voltage < 2.6:
+                status = "pump is ON"
+            else:
+                status = "pump is OFF"
+            str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
+            ble_deque.append(str)
+            volt_flag = False
+
+        await uasyncio.sleep(0)
+
+
+async def start_bluetooth(ble_deque):
     """
     Initializes and manages the Bluetooth Low Energy (BLE) connection.
     Sends messages from a deque to connected BLE devices and processes received data.
@@ -290,8 +324,8 @@ async def start_bluetooth(msg_deque):
         if sp.is_connected():  # Check if a BLE connection is established
             sp.on_write(on_rx)  # Set the callback function for data reception
             try:
-                if len(msg_deque) > 0:
-                    snd_msg = msg_deque.popleft()
+                if len(ble_deque) > 0:
+                    snd_msg = ble_deque.popleft()
                     sp.send(snd_msg)
             except Exception:
                 pass
@@ -301,22 +335,28 @@ async def start_bluetooth(msg_deque):
 
 async def main():
     """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
-    msg = []
-    msg_deque = deque(msg, 20)
+    ble_msg = []
+    notify_msg = []
+    max_ble_msg = 20
+    max_notify_msg = 20
+    ble_deque = deque(ble_msg, max_ble_msg)
+    notify_deque = deque(notify_msg, max_notify_msg)
+    global ip_flag
+    global send_bluetooth_flag
+    global ssid
+    global pwd
 
-    # connect to bluetooth
     print("Starting BlueTooth")
-    uasyncio.create_task(start_bluetooth(msg_deque))
+    uasyncio.create_task(start_bluetooth(ble_deque))
 
     print("Starting WiFi")
     wifi = WiFiConnection()
     while True:
         if not wifi.start_station_mode(True):
 
-            global send_bluetooth_flag
             if send_bluetooth_flag == False:
                 str = "Enter your wifi credentials now\n"
-                msg_deque.append(str)
+                ble_deque.append(str)
                 send_bluetooth_flag = True
                 await uasyncio.sleep(0)
 
@@ -327,7 +367,7 @@ async def main():
                 credentials = {"ssid": ssid, "password": pwd }
                 wifi.update_credentials("NetworkCredentials.py", credentials)
                 try:
-                    msg_deque.append(str)
+                    ble_deque.append(str)
                 except Exception:
                     pass
 
@@ -338,38 +378,22 @@ async def main():
         #raise RuntimeError('network connection failed')
 
     msg_str = 'Setting up webserver...'
-    msg_deque.append(msg_str)
+    ble_deque.append(msg_str)
+
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
-    uasyncio.create_task(server)
-    uasyncio.create_task(detect_voltage(msg_deque))
-    uasyncio.create_task(detect_pressure())
+
+    uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
+    uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
+    uasyncio.create_task(notifications(ble_deque, notify_deque))
 
     # just pulse the on board led for sanity check that the code is running
     while True:
-        global ip_flag
-        global psi_flag
-        global volt_flag
+
         if ip_flag == True:
             print(f"Ip Address: {wifi.ip}")
             str = f"IP Address: http://{wifi.ip}\n"
-            msg_deque.append(str)
+            ble_deque.append(str)
             ip_flag = False
-
-        if psi_flag == True:
-            psi = IoHandler.get_pressure_reading()
-            str = f"Pump pressure: {psi:.1f} PSI\n"
-            msg_deque.append(str)
-            psi_flag = False
-
-        if volt_flag == True:
-            average_voltage = await get_voltage_reading()
-            if average_voltage < 2.6:
-                status = "pump is ON"
-            else:
-                status = "pump is OFF"
-            str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
-            msg_deque.append(str)
-            volt_flag = False
 
         IoHandler.blink_onboard_led()
         await uasyncio.sleep(5)
