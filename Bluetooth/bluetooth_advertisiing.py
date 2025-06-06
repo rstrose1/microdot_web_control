@@ -1,9 +1,13 @@
 # Helpers for generating BLE advertising payloads.
 # Information received from https://electrocredible.com/raspberry-pi-pico-w-bluetooth-ble-micropython/
+import sys
+import os
+from sys import path
 from micropython import const
 import struct
 import bluetooth
 import asyncio
+
 
 # Advertising payloads are repeated packets of the following form:
 #   1 byte data length (N + 1)

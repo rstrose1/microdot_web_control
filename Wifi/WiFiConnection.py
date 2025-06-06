@@ -1,7 +1,10 @@
 # class to handle WiFi connection
+import sys
+import os
+from sys import path
 import utime
 import network
-from NetworkCredentials import NetworkCredentials
+from Wifi.NetworkCredentials import NetworkCredentials
 
 
 class WiFiConnection:

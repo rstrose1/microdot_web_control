@@ -3,7 +3,7 @@
 import utime
 import network
 import urequests
-from NetworkCredentials import NetworkCredentials
+from Wifi.NetworkCredentials import NetworkCredentials
 
 ssid = NetworkCredentials.ssid
 password = NetworkCredentials.password

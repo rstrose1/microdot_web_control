@@ -4,9 +4,9 @@ import utime
 import network
 import socket
 import urequests
-from NetworkCredentials import NetworkCredentials
+from Wifi.NetworkCredentials import NetworkCredentials
 from RequestParser import RequestParser
-from WiFiConnection import WiFiConnection
+from Wifi.WiFiConnection import WiFiConnection
 
 # connect to WiFi
 if not WiFiConnection.start_station_mode(True):

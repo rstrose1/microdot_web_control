@@ -4,7 +4,7 @@ import utime
 from RequestParser import RequestParser
 import uasyncio
 from ResponseBuilder import ResponseBuilder
-from WiFiConnection import WiFiConnection
+from Wifi.WiFiConnection import WiFiConnection
 from IoHandler import IoHandler
 import random
 

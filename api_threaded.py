@@ -5,7 +5,7 @@ import socket
 from RequestParser import RequestParser
 import _thread
 from ResponseBuilder import ResponseBuilder
-from WiFiConnection import WiFiConnection
+from Wifi.WiFiConnection import WiFiConnection
 from IoHandler import IoHandler
 import random
 

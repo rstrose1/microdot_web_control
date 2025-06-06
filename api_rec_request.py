@@ -4,8 +4,11 @@ import utime
 import network
 import socket
 import urequests
-from NetworkCredentials import NetworkCredentials
-from WiFiConnection import WiFiConnection
+import sys
+import os
+from sys import path
+from Wifi.NetworkCredentials import NetworkCredentials
+from Wifi.WiFiConnection import WiFiConnection
 
 # connect to WiFi
 if not WiFiConnection.start_station_mode(True):

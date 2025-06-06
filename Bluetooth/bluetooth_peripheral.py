@@ -1,12 +1,14 @@
 # This example demonstrates a UART periperhal.
 # Info received from: https://electrocredible.com/raspberry-pi-pico-w-bluetooth-ble-micropython/
 
+import sys
+from sys import path
+import os
 import bluetooth
 import random
 import struct
 import time
 from bluetooth_advertisiing import advertising_payload
-
 from micropython import const
 
 _IRQ_CENTRAL_CONNECT = const(1)

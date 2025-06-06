@@ -1,19 +1,21 @@
 # full demo with web control panel
 # combines multi core and multi tasking
+import sys
+import os
 import machine
 from RequestParser import RequestParser
 import uasyncio
 from ResponseBuilder import ResponseBuilder
-from WiFiConnection import WiFiConnection
+from Wifi.WiFiConnection import WiFiConnection
 from IoHandler import IoHandler
 from detect_voltage_pico import VoltageSensor
 from detect_pressure_pico import PressureSensor
 from sys import path
-import umail
+import Email.umail as umail
 import time
 from machine import Pin
 import bluetooth
-from bluetooth_peripheral import BLESimplePeripheral
+from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
 from ucollections import deque
 
 FLASK_TEMPLATE_DIR = "/templates/"
@@ -364,7 +366,7 @@ async def main():
                 str = "Updating wifi credentials from BLE...\n"
                 print(str)
                 credentials = {"ssid": ssid, "password": pwd }
-                wifi.update_credentials("NetworkCredentials.py", credentials)
+                wifi.update_credentials("Wifi/NetworkCredentials.py", credentials)
                 try:
                     ble_deque.append(str)
                 except Exception:
