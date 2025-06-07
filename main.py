@@ -21,7 +21,7 @@ from ucollections import deque
 FLASK_TEMPLATE_DIR = "/WebServer/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
 GAUGE_WEB_PAGE = FLASK_TEMPLATE_DIR + GAUGE_HTML_FILE
-WEB_LINK = "http://192.168.1.10/"
+WEB_LINK = "http://192.168.1.8/"
 
 # Email details
 """
@@ -149,7 +149,7 @@ async def handle_request(reader, writer):
 
         # try to serve static file
         else:
-            response_builder.serve_static_file(request.url, "/templates/gauge1.html")
+            response_builder.serve_static_file(request.url, "WebServer/templates/gauge1.html")
 
         response_builder.build_response()
         writer.write(response_builder.response)
@@ -213,9 +213,7 @@ async def detect_voltage(ble_deque, notify_deque):
 
 def extract_data_from_ble(data):
     """ Extracts specific data from a byte string received over Bluetooth."""
-    print(len(data))
     data_list = data.split()
-    print(data_list)
 
     return data_list[1].decode('utf-8')
 
