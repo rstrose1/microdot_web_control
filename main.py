@@ -18,7 +18,7 @@ import bluetooth
 from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
 from ucollections import deque
 
-FLASK_TEMPLATE_DIR = "/templates/"
+FLASK_TEMPLATE_DIR = "/WebServer/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
 GAUGE_WEB_PAGE = FLASK_TEMPLATE_DIR + GAUGE_HTML_FILE
 WEB_LINK = "http://192.168.1.10/"
