@@ -3,13 +3,13 @@
 import sys
 import os
 import machine
-from RequestParser import RequestParser
+from WebServer.RequestParser import RequestParser
 import uasyncio
-from ResponseBuilder import ResponseBuilder
+from WebServer.ResponseBuilder import ResponseBuilder
 from Wifi.WiFiConnection import WiFiConnection
 from IoHandler import IoHandler
-from detect_voltage_pico import VoltageSensor
-from detect_pressure_pico import PressureSensor
+from VoltageSensor.detect_voltage_pico import VoltageSensor
+from PressureSensor.detect_pressure_pico import PressureSensor
 from sys import path
 import Email.umail as umail
 import time

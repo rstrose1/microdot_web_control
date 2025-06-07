@@ -8,7 +8,7 @@ import bluetooth
 import random
 import struct
 import time
-from bluetooth_advertisiing import advertising_payload
+from Bluetooth.bluetooth_advertisiing import advertising_payload
 from micropython import const
 
 _IRQ_CENTRAL_CONNECT = const(1)
