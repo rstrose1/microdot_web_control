@@ -15,7 +15,6 @@ PUMP_ON_FLAG = 1
 
 class PressureSensor(object):
     def __init__(self, min_psi, max_psi, channel=1, voltage_ref=0.0):
-        print(' Getting pressure sensor object')
         self.channel = channel
         self.channel_id = 1
         self.vRef = voltage_ref
@@ -56,7 +55,7 @@ class PressureSensor(object):
             else:
                 await uasyncio.sleep(10)
 
-async def detect_pressure():
+async def detect_pressure(max_psi=80, min_psi=20):
 
     try:
         print('Starting pressure sensor')
@@ -66,8 +65,6 @@ async def detect_pressure():
 
         MCP3008_CHAN = 1
         voltage_ref = 3.3
-        max_psi = 80
-        min_psi = 20
         pressure = PressureSensor(min_psi, max_psi, MCP3008_CHAN, voltage_ref)
         await pressure.monitor_pressure_sensor()
 
@@ -80,7 +77,9 @@ async def detect_pressure():
 
 # Main function
 async def main():
-   await detect_pressure()
+   max_psi = 80
+   min_psi = 20
+   await detect_pressure(max_psi, min_psi)
 
 
 if __name__ == '__main__':

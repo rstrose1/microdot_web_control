@@ -73,8 +73,6 @@ class WiFiConnection:
         # activate the network interface
         cls.wlan.active(True)
         # connect to wifi network
-        print("Testing ssid..........")
-        print(cls.ssid)
         if cls.ssid is not None:
             cls.wlan.connect(cls.ssid, cls.password)
         else:

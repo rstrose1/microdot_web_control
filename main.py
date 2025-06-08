@@ -10,6 +10,7 @@ from Wifi.WiFiConnection import WiFiConnection
 from IoHandler import IoHandler
 from VoltageSensor.detect_voltage_pico import VoltageSensor
 from PressureSensor.detect_pressure_pico import PressureSensor
+from Bluetooth.Bluetooth import Bluetooth
 from sys import path
 import Email.umail as umail
 import time
@@ -33,7 +34,7 @@ recipient_email ="takeella@gmail.com"
 
 sender_email = "takeella@gmail.com"
 sender_name = 'Raspberry Pi Pico'
-sender_app_password = ''
+sender_app_password = 'dlvk fxtg mdbr hngv'
 recipient_email = "rstrose1@yahoo.com"
 email_flag = False
 # Initialize the LED state to 0 (off)
@@ -120,19 +121,8 @@ async def handle_request(reader, writer):
 
                 if psi < 20:
                     warning_str = "PUMP PRESSURE LOW!"
-                    global email_flag
-                    if email_flag == False:
-                        body = prepare_email(warning_str)
-                        #send_email(body)
-                        email_flag = True
-
                 elif psi > 80:
                     warning_str = "PUMP PRESSURE HIGH!"
-                    global email_flag
-                    if email_flag == False:
-                        body = prepare_email(warning_str)
-                        #send_email(body)
-                        email_flag = True
                 else:
                     warning_str = ''
 
@@ -160,6 +150,8 @@ async def handle_request(reader, writer):
         print('connection error ' + str(e.errno) + " " + str(e))
 
 async def detect_pressure(ble_deque, notify_deque):
+    global max_psi
+    global min_psi
     try:
         print('Starting pressure sensor')
 
@@ -168,10 +160,25 @@ async def detect_pressure(ble_deque, notify_deque):
 
         MCP3008_CHAN = 1
         voltage_ref = 3.3
+
         max_psi = 80
         min_psi = 20
         pressure = PressureSensor(min_psi, max_psi, MCP3008_CHAN, voltage_ref)
         await pressure.monitor_pressure_sensor()
+
+    except KeyboardInterrupt:
+        print("\nExiting the program..")
+        pass
+
+    except:
+        print("Some error/exception occurred")
+
+
+async def setup_bluetooth(ble_deque, notify_deque):
+    try:
+        print('Setting up  bluetooth')
+        bluetooth = Bluetooth(ble_deque, notify_deque)
+        await bluetooth.start_bluetooth()
 
     except KeyboardInterrupt:
         print("\nExiting the program..")
@@ -211,126 +218,85 @@ async def detect_voltage(ble_deque, notify_deque):
         print("Some error/exception occurred")
 
 
-def extract_data_from_ble(data):
-    """ Extracts specific data from a byte string received over Bluetooth."""
-    data_list = data.split()
-
-    return data_list[1].decode('utf-8')
-
-
-def on_rx(data):
-    """
-    Callback function to handle data received via Bluetooth.
-
-    Args:
-        data (bytes): The data received from the Bluetooth connection.
-    """
-    print("Pico Data received: ", data)  # Print the received data
-    global led_state  # Access the global variable led_state
-    global ssid
-    global pwd
-    global ip_flag
-    global email
-    global psi_flag
-    global volt_flag
-    # get wifi SSID over bluetooth connection
-    if 'ip' in data:
-        ip_flag = True
-
-    elif 'psi' in data:
-        psi_flag = True
-
-    elif 'volt' in data:
-        volt_flag = True
-
-    elif 'ssid' in data:
-#        led.value(not led_state)  # Toggle the LED state (on/off)
-#       led_state = 1 - led_state  # Update the LED state
-        ssid = extract_data_from_ble(data)
-        print(ssid)
-
-    elif 'email' in data:
-        email = extract_data_from_ble(data)
-        print(email)
-
-    # get wifi password over bluetooth connection
-    elif 'pwd' in data:
-#        led.value(not led_state)  # Toggle the LED state (on/off)
-#        led_state = 1 - led_state  # Update the LED state
-        pwd = extract_data_from_ble(data)
-        print(pwd)
-
-    elif 'password' in data:
-#        led.value(not led_state)  # Toggle the LED state (on/off)
-#        led_state = 1 - led_state  # Update the LED state
-        pwd = extract_data_from_ble(data)
-        print(pwd)
-
-    else:
-        print("unknown data\n")
-
+def alert_user_via_email(msg):
+    global email_flag
+    if email_flag == False:
+        body = prepare_email(msg)
+        # TODO: enable email sending
+        #send_email(body)
+        email_flag = True
     return
 
 async def notifications(ble_deque, notify_deque):
     """ Start an infinite loop to check the message deque """
-    global psi_flag
-    global volt_flag
-
+    global email_flag
+    global ssid
+    global pwd
+    global ip_address
+    email_flag = False
+    global max_psi
+    global min_psi
     while True:
-
         if len(notify_deque) > 0:
             get_notify_msg = notify_deque.popleft()
             if get_notify_msg is not None:
-                print(get_notify_msg)
+                if 'ssid' in get_notify_msg:
+                    data_list = get_notify_msg.split()
+                    ssid = data_list[1]
+
+                elif 'pwd' in get_notify_msg or 'password' in get_notify_msg:
+                    data_list = get_notify_msg.split()
+                    pwd = data_list[1]
+
+                elif 'max' in get_notify_msg:
+                    data_list = get_notify_msg.split()
+                    max_psi = int(data_list[1])
+
+                elif 'min' in get_notify_msg:
+                    data_list = get_notify_msg.split()
+                    min_psi = int(data_list[1])
+
+                elif 'ip' in get_notify_msg:
+                    print(f"Ip Address: {ip_address}")
+                    str = f"IP Address: http://{ip_address}/\n"
+                    ble_deque.append(str)
+
+                elif 'volt' in get_notify_msg:
+                    average_voltage = await get_voltage_reading()
+                    if average_voltage < 2.6:
+                        status = "pump is ON"
+                    else:
+                        status = "pump is OFF"
+                    str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
+                    ble_deque.append(str)
+
+                elif 'psi' in get_notify_msg:
+                    psi = IoHandler.get_pressure_reading()
+                    str = f"Pump pressure: {psi:.1f} PSI\n"
+                    ble_deque.append(str)
+
+                else:
+                    print("unknown data\n")
+
                 #need to handle cases for turning on external led and/or buzzer
 
-        # the following flags are set in the on_rx callback function
-        # and are used to determine if the pressure or voltage sensor readings
-        # should be sent to the bluetooth device
-        if psi_flag == True:
-            psi = IoHandler.get_pressure_reading()
-            str = f"Pump pressure: {psi:.1f} PSI\n"
-            ble_deque.append(str)
-            psi_flag = False
 
-        if volt_flag == True:
-            average_voltage = await get_voltage_reading()
-            if average_voltage < 2.6:
-                status = "pump is ON"
-            else:
-                status = "pump is OFF"
-            str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
-            ble_deque.append(str)
-            volt_flag = False
+        pressure = IoHandler.get_pressure_reading()
+        if pressure < 20:
+            if email_flag == False:
+                warning_str = f"PUMP PRESSURE LOW! - {pressure:.1f} PSI"
+                alert_user_via_email(warning_str)
+                ble_deque.append(warning_str)
+                email_flag = True
+
+        if pressure > 80:
+            if email_flag == False:
+                warning_str = f"PUMP PRESSURE HIGH! - {pressure:.1f} PSI"
+                alert_user_via_email(warning_str)
+                ble_deque.append(warning_str)
+            email_flag = True
 
         await uasyncio.sleep(0)
-
-
-async def start_bluetooth(ble_deque):
-    """
-    Initializes and manages the Bluetooth Low Energy (BLE) connection.
-    Sends messages from a deque to connected BLE devices and processes received data.
-    """
-    print("Starting bluetooth...")
-    # Create a Bluetooth Low Energy (BLE) object
-    ble = bluetooth.BLE()
-
-    # Create an instance of the BLESimplePeripheral class with the BLE object
-    sp = BLESimplePeripheral(ble)
-
-    # Start an infinite loop to send ble messages to user
-    while True:
-        if sp.is_connected():  # Check if a BLE connection is established
-            sp.on_write(on_rx)  # Set the callback function for data reception
-            try:
-                if len(ble_deque) > 0:
-                    snd_msg = ble_deque.popleft()
-                    sp.send(snd_msg)
-            except Exception:
-                pass
-
-        await uasyncio.sleep(0)
-
 
 async def main():
     """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
@@ -344,9 +310,15 @@ async def main():
     global send_bluetooth_flag
     global ssid
     global pwd
+    global ip_address
+    global max_psi
+    global min_psi
+
+    print("Starting Notifications")
+    uasyncio.create_task(notifications(ble_deque, notify_deque))
 
     print("Starting BlueTooth")
-    uasyncio.create_task(start_bluetooth(ble_deque))
+    uasyncio.create_task(setup_bluetooth(ble_deque, notify_deque))
 
     print("Starting WiFi")
     wifi = WiFiConnection()
@@ -376,23 +348,18 @@ async def main():
         await uasyncio.sleep(0)
         #raise RuntimeError('network connection failed')
 
+    ip_address = wifi.ip
+
     msg_str = 'Setting up webserver...'
     ble_deque.append(msg_str)
-
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
     uasyncio.create_task(server)
     uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
     uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
-    uasyncio.create_task(notifications(ble_deque, notify_deque))
+
 
     # just pulse the on board led for sanity check that the code is running
     while True:
-
-        if ip_flag == True:
-            print(f"Ip Address: {wifi.ip}")
-            str = f"IP Address: http://{wifi.ip}\n"
-            ble_deque.append(str)
-            ip_flag = False
 
         IoHandler.blink_onboard_led()
         await uasyncio.sleep(5)
