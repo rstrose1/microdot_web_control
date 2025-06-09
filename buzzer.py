@@ -1,3 +1,12 @@
+# Code obtained from: https://www.tomshardware.com/how-to/buzzer-music-raspberry-pi-pico
+# Connect ground pin of buzzer to a GND pin on the Pico
+# and the positive buzzer pin to a standard GPIO pin on the pico. Ex GP15
+# Note: There is a difference between an active and passive piezo buzzer. 
+# Active will make noise if just hooked up to power. Passive will not.
+# Passive are preferred for better range of sound, but both should work
+# Some Passive buzzers may not have positive or negative labels so should work in 
+# any pin configuration.
+
 from machine import Pin, PWM
 from utime import sleep
 buzzer = PWM(Pin(15))
