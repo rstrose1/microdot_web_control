@@ -6,6 +6,7 @@ import bluetooth
 import uasyncio
 from ucollections import deque
 from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
+from IoHandler import IoHandler
 
 class Bluetooth(object):
     def __init__(self, ble_deque, notify_deque):
@@ -81,8 +82,12 @@ class Bluetooth(object):
         # Create a Bluetooth Low Energy (BLE) object
         ble = bluetooth.BLE()
 
+        print("Got ble")
+
         # Create an instance of the BLESimplePeripheral class with the BLE object
         sp = BLESimplePeripheral(ble)
+
+        print("Got peripheral")
 
         # Start an infinite loop to send ble messages to user
         while True:
@@ -95,4 +100,40 @@ class Bluetooth(object):
                 except Exception:
                     pass
 
-            await uasyncio.sleep(0)
+            await uasyncio.sleep(1)
+
+
+async def setup_bluetooth(ble_deque, notify_deque):
+    try:
+        print('Setting up  bluetooth')
+        bluetooth = Bluetooth(ble_deque, notify_deque)
+        await bluetooth.start_bluetooth()
+
+    except KeyboardInterrupt:
+        print("\nExiting the program..")
+        pass
+
+    except:
+        print("Some error/exception occurred")
+
+
+async def main():
+    """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
+    ble_msg = []
+    notify_msg = []
+    max_ble_msg = 20
+    max_notify_msg = 20
+    ble_deque = deque(ble_msg, max_ble_msg)
+    notify_deque = deque(notify_msg, max_notify_msg)
+    send_bluetooth_flag = False
+
+    print("Starting BlueTooth")
+    uasyncio.create_task(setup_bluetooth(ble_deque, notify_deque))
+
+
+    # just pulse the on board led for sanity check that the code is running
+    while True:
+        IoHandler.blink_onboard_led()
+        await uasyncio.sleep(5)
+
+uasyncio.run(main())

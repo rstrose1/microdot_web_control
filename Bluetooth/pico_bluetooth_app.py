@@ -1,7 +1,7 @@
 # Import necessary modules
 from machine import Pin
 import bluetooth
-from bluetooth.bluetooth_peripheral import BLESimplePeripheral
+from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
 
 # Create a Bluetooth Low Energy (BLE) object
 ble = bluetooth.BLE()

@@ -314,9 +314,12 @@ async def main():
     global max_psi
     global min_psi
 
-    print("Starting Notifications")
+    print("Starting notifications")
     uasyncio.create_task(notifications(ble_deque, notify_deque))
-
+    print("Starting voltage sensor")
+    uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
+    print("Starting pressure sensor")
+    uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
     print("Starting BlueTooth")
     uasyncio.create_task(setup_bluetooth(ble_deque, notify_deque))
 
@@ -329,7 +332,7 @@ async def main():
                 str = "Enter your wifi credentials now\n"
                 ble_deque.append(str)
                 send_bluetooth_flag = True
-                await uasyncio.sleep(0)
+                await uasyncio.sleep(1)
 
             # ssid and pwd obtained via bluetooth communication from user
             if ssid is not '' and pwd is not '':
@@ -341,21 +344,18 @@ async def main():
                     ble_deque.append(str)
                 except Exception:
                     pass
-
         else:
             break
 
-        await uasyncio.sleep(0)
+        await uasyncio.sleep(1)
         #raise RuntimeError('network connection failed')
 
     ip_address = wifi.ip
 
-    msg_str = 'Setting up webserver...'
+    msg_str = 'Setting up webserver...\n'
     ble_deque.append(msg_str)
     server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
     uasyncio.create_task(server)
-    uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
-    uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
 
 
     # just pulse the on board led for sanity check that the code is running
