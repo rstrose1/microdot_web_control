@@ -117,7 +117,7 @@ async def setup_bluetooth(ble_deque, notify_deque):
         print("Some error/exception occurred")
 
 
-async def main():
+async def bt():
     """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
     ble_msg = []
     notify_msg = []
@@ -136,4 +136,4 @@ async def main():
         IoHandler.blink_onboard_led()
         await uasyncio.sleep(5)
 
-uasyncio.run(main())
+#uasyncio.run(bt())

@@ -15,8 +15,8 @@ class WiFiConnection:
     gateway = ""
     dns_server = ""
     wlan = None
-    ssid = None
-    password = None
+    ssid = 'ROW'
+    password = 'macLinks'
 
     def __init__(self, ssid=None, password=None):
         self.ssid = ssid

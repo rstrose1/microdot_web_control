@@ -1,5 +1,6 @@
 # full demo with web control panel
 # combines multi core and multi tasking
+# https://randomnerdtutorials.com/micropython-raspberry-pi-pico-asynchronous-programming/
 import sys
 import os
 import machine
@@ -187,6 +188,82 @@ async def setup_bluetooth(ble_deque, notify_deque):
     except:
         print("Some error/exception occurred")
 
+async def blink_led():
+
+    try:
+        # just pulse the on board led for sanity check that the code is running
+        while True:
+            print("Blinking onboard LED")
+            IoHandler.blink_onboard_led()
+            await uasyncio.sleep(5)
+
+    except KeyboardInterrupt:
+        print("\nExiting the program..")
+        pass
+
+    except:
+        print("Some error/exception occurred")
+
+
+async def setup_web_server(ble_deque, notify_deque):
+    #ip_address = wifi.ip
+
+    try:
+
+        msg_str = 'Setting up webserver...\n'
+        ble_deque.append(msg_str)
+        server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
+        uasyncio.create_task(server)
+
+    except KeyboardInterrupt:
+        print("\nExiting the program..")
+        pass
+
+    except:
+        print("Some error/exception occurred")
+
+
+async def setup_wifi_connection(ble_deque, notify_deque):
+
+    ssid = 'ROW'
+    pwd = 'macLinks'
+
+    try:
+        print("Starting WiFi")
+        wifi = WiFiConnection()
+        while True:
+            print("Connecting to WiFi...")
+            if not wifi.start_station_mode(True):
+
+                if send_bluetooth_flag == False:
+                    str = "Enter your wifi credentials now\n"
+                    ble_deque.append(str)
+                    send_bluetooth_flag = True
+                    await uasyncio.sleep(1)
+
+                # ssid and pwd obtained via bluetooth communication from user
+                if ssid is not '' and pwd is not '':
+                    str = "Updating wifi credentials from BLE...\n"
+                    print(str)
+                    credentials = {"ssid": ssid, "password": pwd }
+                    print(f"ssid: {ssid}, pwd: {pwd}")
+                    wifi.update_credentials("Wifi/NetworkCredentials.py", credentials)
+                    try:
+                        ble_deque.append(str)
+                    except Exception:
+                        pass
+            else:
+                break
+
+            await uasyncio.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\nExiting the program..")
+        pass
+
+    except:
+        print("Some error/exception occurred")
+        #raise RuntimeError('network connection failed')
 
 async def detect_voltage(ble_deque, notify_deque):
     """
@@ -298,6 +375,8 @@ async def notifications(ble_deque, notify_deque):
 
         await uasyncio.sleep(0)
 
+
+#We create coroutine called main() that serves as a central point to coordinate the execution of the tasks.
 async def main():
     """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
     ble_msg = []
@@ -322,51 +401,18 @@ async def main():
     uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
     print("Starting BlueTooth")
     uasyncio.create_task(setup_bluetooth(ble_deque, notify_deque))
-
-    print("Starting WiFi")
-    wifi = WiFiConnection()
-    while True:
-        if not wifi.start_station_mode(True):
-
-            if send_bluetooth_flag == False:
-                str = "Enter your wifi credentials now\n"
-                ble_deque.append(str)
-                send_bluetooth_flag = True
-                await uasyncio.sleep(1)
-
-            # ssid and pwd obtained via bluetooth communication from user
-            if ssid is not '' and pwd is not '':
-                str = "Updating wifi credentials from BLE...\n"
-                print(str)
-                credentials = {"ssid": ssid, "password": pwd }
-                wifi.update_credentials("Wifi/NetworkCredentials.py", credentials)
-                try:
-                    ble_deque.append(str)
-                except Exception:
-                    pass
-        else:
-            break
-
-        await uasyncio.sleep(1)
-        #raise RuntimeError('network connection failed')
-
-    ip_address = wifi.ip
-
-    msg_str = 'Setting up webserver...\n'
-    ble_deque.append(msg_str)
-    server = uasyncio.start_server(handle_request, "0.0.0.0", 80)
-    uasyncio.create_task(server)
-
-
-    # just pulse the on board led for sanity check that the code is running
-    while True:
-
-        IoHandler.blink_onboard_led()
-        await uasyncio.sleep(5)
-
+    print("Starting Wifi connection")
+    uasyncio.create_task(setup_wifi_connection(ble_deque, notify_deque))
+    print("Starting Web Server")
+    uasyncio.create_task(setup_web_server(ble_deque, notify_deque))
+    print("Starting Led Blinking")
+    uasyncio.create_task(blink_led())
 try:
     # start asyncio tasks on first core
-    uasyncio.run(main())
+    loop = uasyncio.new_event_loop()
+    loop.create_task(main())
+    loop.run_forever()
+    #uasyncio.run(main())
 finally:
     print("running finally block")
-    uasyncio.new_event_loop()
+
