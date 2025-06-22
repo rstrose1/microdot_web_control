@@ -15,12 +15,14 @@ class WiFiConnection:
     gateway = ""
     dns_server = ""
     wlan = None
-    ssid = 'ROW'
-    password = 'macLinks'
+    ssid = ''
+    password = ''
+    failure = ''
 
     def __init__(self, ssid=None, password=None):
         self.ssid = ssid
         self.password = password
+
 
     def modify_credential_file(self, filename, original, replacement):
         """Modify the content of a file by replacing original string with replacement string."""
@@ -65,6 +67,20 @@ class WiFiConnection:
         replacement_str = f"password = '{pwd_value}'"
         self.modify_credential_file(filename, original_str, replacement_str)
 
+    @classmethod
+    def save_error_status(cls, status):
+        """Save the error status."""
+
+        if status == network.STAT_WRONG_PASSWORD:
+            cls.failure = "Wrong Password"
+        elif status == network.STAT_CONNECT_FAIL:
+            cls.failure = "Connection Failed"
+        elif status == network.STAT_NO_AP_FOUND:
+            cls.failure = "No Access Point Found"
+        elif status == network.STAT_IDLE:
+            cls.failure = "Idle"
+        else:
+            cls.failure = "Unknown Error"
 
     @classmethod
     def start_station_mode(cls, print_progress=False):
@@ -93,6 +109,7 @@ class WiFiConnection:
                 3   STAT_GOT_IP -- connection successful.
             """
             if cls.wlan.status() < 0 or cls.wlan.status() >= 3:
+                cls.save_error_status(cls.wlan.status())
                 # connection attempt finished
                 break
             max_wait -= 1
@@ -114,4 +131,5 @@ class WiFiConnection:
             cls.dns_server = config[3]
             if print_progress:
                 print('ip = ' + str(cls.ip))
+            cls.failure = ''
             return True

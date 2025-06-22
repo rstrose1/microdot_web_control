@@ -190,19 +190,19 @@ async def setup_bluetooth(ble_deque, notify_deque):
 
 async def blink_led():
 
-    try:
+    while True:
         # just pulse the on board led for sanity check that the code is running
-        while True:
-            print("Blinking onboard LED")
+        try:
             IoHandler.blink_onboard_led()
             await uasyncio.sleep(5)
 
-    except KeyboardInterrupt:
-        print("\nExiting the program..")
-        pass
+        except KeyboardInterrupt:
+            print("\nExiting the program..")
+            break
 
-    except:
-        print("Some error/exception occurred")
+        except:
+            print("Some error/exception occurred")
+            break
 
 
 async def setup_web_server(ble_deque, notify_deque):
@@ -224,17 +224,13 @@ async def setup_web_server(ble_deque, notify_deque):
 
 
 async def setup_wifi_connection(ble_deque, notify_deque):
+    global send_bluetooth_flag
 
-    ssid = 'ROW'
-    pwd = 'macLinks'
-
-    try:
-        print("Starting WiFi")
-        wifi = WiFiConnection()
-        while True:
-            print("Connecting to WiFi...")
+    print("Starting WiFi")
+    wifi = WiFiConnection()
+    while True:
+        try:
             if not wifi.start_station_mode(True):
-
                 if send_bluetooth_flag == False:
                     str = "Enter your wifi credentials now\n"
                     ble_deque.append(str)
@@ -244,26 +240,21 @@ async def setup_wifi_connection(ble_deque, notify_deque):
                 # ssid and pwd obtained via bluetooth communication from user
                 if ssid is not '' and pwd is not '':
                     str = "Updating wifi credentials from BLE...\n"
-                    print(str)
                     credentials = {"ssid": ssid, "password": pwd }
-                    print(f"ssid: {ssid}, pwd: {pwd}")
                     wifi.update_credentials("Wifi/NetworkCredentials.py", credentials)
-                    try:
-                        ble_deque.append(str)
-                    except Exception:
-                        pass
+                    ble_deque.append(str)
             else:
+                ble_deque.append(wifi.ip)
                 break
 
-            await uasyncio.sleep(1)
+            await uasyncio.sleep(5)
 
-    except KeyboardInterrupt:
-        print("\nExiting the program..")
-        pass
+        except KeyboardInterrupt:
+            print("\nExiting the program..")
+            break
 
-    except:
-        print("Some error/exception occurred")
-        #raise RuntimeError('network connection failed')
+        except:
+            break
 
 async def detect_voltage(ble_deque, notify_deque):
     """
@@ -318,10 +309,13 @@ async def notifications(ble_deque, notify_deque):
             get_notify_msg = notify_deque.popleft()
             if get_notify_msg is not None:
                 if 'ssid' in get_notify_msg:
+                    print(f"SSID: {get_notify_msg}")
                     data_list = get_notify_msg.split()
                     ssid = data_list[1]
 
                 elif 'pwd' in get_notify_msg or 'password' in get_notify_msg:
+                    print(f"Password: {get_notify_msg}")
+                    ip_address = machine.unique_id()
                     data_list = get_notify_msg.split()
                     pwd = data_list[1]
 
@@ -373,7 +367,7 @@ async def notifications(ble_deque, notify_deque):
                 ble_deque.append(warning_str)
             email_flag = True
 
-        await uasyncio.sleep(0)
+        await uasyncio.sleep(2)
 
 
 #We create coroutine called main() that serves as a central point to coordinate the execution of the tasks.
