@@ -15,8 +15,8 @@ class WiFiConnection:
     gateway = ""
     dns_server = ""
     wlan = None
-    ssid = ''
-    password = ''
+    ssid = None
+    password = None
     failure = ''
 
     def __init__(self, ssid=None, password=None):
@@ -89,9 +89,14 @@ class WiFiConnection:
         # activate the network interface
         cls.wlan.active(True)
         # connect to wifi network
-        if cls.ssid is not None:
+
+        print(f"Trying to connect to Wi-Fi ssid: {cls.ssid}")
+
+        if cls.ssid is not None and cls.password is not None:
+            print(f"Connecting to Wi-Fi ssid: {cls.ssid}")
             cls.wlan.connect(cls.ssid, cls.password)
         else:
+            print(f"NetworkCredentials.ssid = {NetworkCredentials.ssid}")
             cls.wlan.connect(NetworkCredentials.ssid, NetworkCredentials.password)
 
         cls.status = network.STAT_CONNECTING

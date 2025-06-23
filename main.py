@@ -244,7 +244,7 @@ async def setup_wifi_connection(ble_deque, notify_deque):
                     wifi.update_credentials("Wifi/NetworkCredentials.py", credentials)
                     ble_deque.append(str)
             else:
-                ble_deque.append(wifi.ip)
+                ble_deque.append(f"Wifi IP address: {wifi.ip}")
                 break
 
             await uasyncio.sleep(5)
