@@ -164,7 +164,7 @@ async def detect_pressure(ble_deque, notify_deque):
 
         max_psi = 80
         min_psi = 20
-        pressure = PressureSensor(min_psi, max_psi, MCP3008_CHAN, voltage_ref)
+        pressure = PressureSensor(min_psi, max_psi, MCP3008_CHAN, voltage_ref, notify_deque)
         await pressure.monitor_pressure_sensor()
 
     except KeyboardInterrupt:
@@ -401,12 +401,14 @@ async def main():
     uasyncio.create_task(setup_web_server(ble_deque, notify_deque))
     print("Starting Led Blinking")
     uasyncio.create_task(blink_led())
+
+
 try:
     # start asyncio tasks on first core
     loop = uasyncio.new_event_loop()
     loop.create_task(main())
     loop.run_forever()
-    #uasyncio.run(main())
+
 finally:
     print("running finally block")
 
