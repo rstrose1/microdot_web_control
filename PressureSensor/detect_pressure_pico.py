@@ -15,7 +15,8 @@ PUMP_ON_FLAG = 1
 
 
 class PressureSensor(object):
-    def __init__(self, min_psi, max_psi, channel=1, voltage_ref=0.0, notify_deque=None):
+    def __init__(self, min_psi, max_psi, channel=1, voltage_ref=0.0):
+        """ Initialize the PressureSensor object. """
 
         self.channel = channel
         self.channel_id = 1
@@ -27,6 +28,12 @@ class PressureSensor(object):
         self.spinner = "|/-\\"
         self.spinner_index = 0
         self.send_email_flag = False
+        """'
+        if psi_deque is None:
+            self.psi_deque = deque()
+        else:
+            self.psi_deque = psi_deque
+        """
 
     def get_pump_pressure(self):
         adc_value = self.ADC_pressure.read_u16()
@@ -81,6 +88,10 @@ class PressureSensor(object):
 
     async def monitor_pressure_sensor(self):
         while True:
+            # If there are messages in the notification deque, send them
+#            if len(self.notify_deque) > 0:
+#                print("Sending message from notify_deque")
+
             if PUMP_ON_FLAG:
                 pump_pressure = self.get_pump_pressure()
 
@@ -119,9 +130,9 @@ async def detect_pressure(max_psi=80, min_psi=20):
 
 # Main function
 async def main():
-   max_psi = 80
-   min_psi = 20
-   await detect_pressure(max_psi, min_psi)
+    max_psi = 80
+    min_psi = 20
+    await detect_pressure(max_psi, min_psi)
 
 
 if __name__ == '__main__':

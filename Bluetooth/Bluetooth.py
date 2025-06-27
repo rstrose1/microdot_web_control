@@ -94,6 +94,7 @@ class Bluetooth(object):
             if sp.is_connected():  # Check if a BLE connection is established
                 sp.on_write(self.on_rx)  # Set the callback function for data reception
                 try:
+                    # If there are messages in the notification deque, send them
                     if len(self.ble_deque) > 0:
                         snd_msg = self.ble_deque.popleft()
                         sp.send(snd_msg)

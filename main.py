@@ -164,7 +164,7 @@ async def detect_pressure(ble_deque, notify_deque):
 
         max_psi = 80
         min_psi = 20
-        pressure = PressureSensor(min_psi, max_psi, MCP3008_CHAN, voltage_ref, notify_deque)
+        pressure = PressureSensor(min_psi, max_psi, MCP3008_CHAN, voltage_ref)
         await pressure.monitor_pressure_sensor()
 
     except KeyboardInterrupt:
@@ -339,6 +339,7 @@ async def notifications(ble_deque, notify_deque):
                     else:
                         status = "pump is OFF"
                     str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
+                    # append the voltage status to the BLE deque
                     ble_deque.append(str)
 
                 elif 'psi' in get_notify_msg:
