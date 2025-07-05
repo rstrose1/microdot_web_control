@@ -57,8 +57,8 @@ class VoltageSensor(object):
                     msg = "PUMP OFF "
 #                    led.off()  # Turn LED off (set pin low)
 
-                #print(f"Voltage:{voltage:.2f} Max:{max_value:.2f} Min:{min_value:.2f} PUMP {msg} {spinner[spinner_index]} ")
-                #print("\33[2A")
+                print(f"Voltage:{voltage:.2f} Max:{max_value:.2f} Min:{min_value:.2f} PUMP {msg} {spinner[spinner_index]} ")
+                print("\33[2A")
                 self.samples.clear()
                 #spinner_index = (spinner_index + 1) % len(spinner)
                 if self.pump_on_off_status != msg:
@@ -73,7 +73,7 @@ class VoltageSensor(object):
                         pass
                     """
 
-            await uasyncio.sleep(0)  # Sleep for a short time to allow other tasks to run
+            await uasyncio.sleep(.01)  # Sleep for a short time to allow other tasks to run
 
 async def detect_voltage(threshold_volt_ref, sampling_rate):
     ADC_CHANNEL = 0

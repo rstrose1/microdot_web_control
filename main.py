@@ -19,6 +19,7 @@ from machine import Pin
 import bluetooth
 from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
 from ucollections import deque
+import buzzer
 
 FLASK_TEMPLATE_DIR = "/WebServer/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
@@ -88,9 +89,8 @@ async def get_voltage_reading():
     samples = []
     sampling_rate = 120  # Hz
     while (len(samples) < sampling_rate):
-        voltage = IoHandler.get_voltage_reading()
-        samples.append(voltage)
-        await uasyncio.sleep(0)
+        samples.append(IoHandler.get_voltage_reading())
+        await uasyncio.sleep(.01)  # Sleep for 10 ms to simulate sampling rate
 
     return sum(samples) / len(samples)
 
@@ -194,7 +194,7 @@ async def blink_led():
         # just pulse the on board led for sanity check that the code is running
         try:
             IoHandler.blink_onboard_led()
-            await uasyncio.sleep(5)
+            await uasyncio.sleep(2)
 
         except KeyboardInterrupt:
             print("\nExiting the program..")
@@ -265,7 +265,7 @@ async def detect_voltage(ble_deque, notify_deque):
     """
     ADC_CHANNEL = 0
     voltage_q = "placeHolder"
-    threshold_volt_ref = 2.6
+    threshold_volt_ref = 3.14
     sampling_rate = 120  # Hz
 
     str = "Setting up MCP3008 ADC for voltage sensor..\n"
@@ -304,6 +304,7 @@ async def notifications(ble_deque, notify_deque):
     email_flag = False
     global max_psi
     global min_psi
+    speaker = buzzer.Buzzer()
     while True:
         if len(notify_deque) > 0:
             get_notify_msg = notify_deque.popleft()
@@ -332,6 +333,19 @@ async def notifications(ble_deque, notify_deque):
                     str = f"IP Address: http://{ip_address}/\n"
                     ble_deque.append(str)
 
+                elif 'volts' in get_notify_msg: # for
+                    num_display = 20
+                    for i in range(num_display):
+                        average_voltage = await get_voltage_reading()
+                        if average_voltage < 2.6:
+                            status = "pump is ON"
+                        else:
+                            status = "pump is OFF"
+                        str = f"Voltage sensor ({i+1} of {num_display}): {average_voltage:.2f} V \n"
+                        # append the voltage status to the BLE deque
+                        ble_deque.append(str)
+                        await uasyncio.sleep(0)
+
                 elif 'volt' in get_notify_msg:
                     average_voltage = await get_voltage_reading()
                     if average_voltage < 2.6:
@@ -347,8 +361,12 @@ async def notifications(ble_deque, notify_deque):
                     str = f"Pump pressure: {psi:.1f} PSI\n"
                     ble_deque.append(str)
 
+                elif 'PUMP ON' in get_notify_msg:
+                    await speaker.set_alarm(1000)  # Set alarm frequency to 1000Hz
+
                 else:
-                    print("unknown data\n")
+                    #print(f"unknown data {get_notify_msg}\n")
+                    pass
 
                 #need to handle cases for turning on external led and/or buzzer
 
@@ -368,7 +386,7 @@ async def notifications(ble_deque, notify_deque):
                 ble_deque.append(warning_str)
             email_flag = True
 
-        await uasyncio.sleep(2)
+        await uasyncio.sleep(0.1)  # Sleep for a short duration to avoid busy waiting
 
 
 #We create coroutine called main() that serves as a central point to coordinate the execution of the tasks.
@@ -376,8 +394,8 @@ async def main():
     """Main function to initialize the system, set up WiFi, Bluetooth, and start the web server."""
     ble_msg = []
     notify_msg = []
-    max_ble_msg = 20
-    max_notify_msg = 20
+    max_ble_msg = 200
+    max_notify_msg = 200
     ble_deque = deque(ble_msg, max_ble_msg)
     notify_deque = deque(notify_msg, max_notify_msg)
     global ip_flag
