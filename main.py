@@ -19,7 +19,8 @@ from machine import Pin
 import bluetooth
 from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
 from ucollections import deque
-import buzzer
+from buzzer import Buzzer
+from blink import LED
 
 FLASK_TEMPLATE_DIR = "/WebServer/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
@@ -52,6 +53,7 @@ volt_flag = False
 email = ''
 send_bluetooth_flag = False
 email_subject ='Hello from RPi Pico W'
+voltage_threshold = 3.14  # Voltage threshold for pump status
 
 def prepare_email(msg):
     """
@@ -115,7 +117,7 @@ async def handle_request(reader, writer):
             elif action == 'get_pump_status':
                 psi = IoHandler.get_pressure_reading()
                 average_voltage = await get_voltage_reading()
-                if average_voltage < 2.6:
+                if average_voltage < voltage_threshold:
                     pump_on_off = "PUMP ON"
                 else:
                     pump_on_off = "PUMP OFF"
@@ -190,10 +192,13 @@ async def setup_bluetooth(ble_deque, notify_deque):
 
 async def blink_led():
 
+    led = LED("LED")  # Initialize LED on the onboard pin
+
     while True:
         # just pulse the on board led for sanity check that the code is running
         try:
-            IoHandler.blink_onboard_led()
+            led.toggle()  # Toggle the LED state
+            #IoHandler.blink_onboard_led()
             await uasyncio.sleep(2)
 
         except KeyboardInterrupt:
@@ -265,7 +270,7 @@ async def detect_voltage(ble_deque, notify_deque):
     """
     ADC_CHANNEL = 0
     voltage_q = "placeHolder"
-    threshold_volt_ref = 3.14
+    threshold_volt_ref = voltage_threshold
     sampling_rate = 120  # Hz
 
     str = "Setting up MCP3008 ADC for voltage sensor..\n"
@@ -304,7 +309,7 @@ async def notifications(ble_deque, notify_deque):
     email_flag = False
     global max_psi
     global min_psi
-    speaker = buzzer.Buzzer()
+    speaker = Buzzer()
     while True:
         if len(notify_deque) > 0:
             get_notify_msg = notify_deque.popleft()
@@ -337,7 +342,7 @@ async def notifications(ble_deque, notify_deque):
                     num_display = 20
                     for i in range(num_display):
                         average_voltage = await get_voltage_reading()
-                        if average_voltage < 2.6:
+                        if average_voltage < voltage_threshold:
                             status = "pump is ON"
                         else:
                             status = "pump is OFF"
@@ -348,7 +353,7 @@ async def notifications(ble_deque, notify_deque):
 
                 elif 'volt' in get_notify_msg:
                     average_voltage = await get_voltage_reading()
-                    if average_voltage < 2.6:
+                    if average_voltage < voltage_threshold:
                         status = "pump is ON"
                     else:
                         status = "pump is OFF"

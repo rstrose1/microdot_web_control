@@ -138,15 +138,14 @@ class Buzzer(object):
 
 
 # Main function
-"""
 async def speaker():
     buzzer = Buzzer()
 
     #buzzer.playsong(buzzer.song, buzzer.tones)
     await buzzer.set_alarm(1000)  # Set alarm frequency to 1000Hz
     return
-"""
 
-#if __name__ == "__main__":
-#    uasyncio.run(speaker())
+
+if __name__ == "__main__":
+    uasyncio.run(speaker())
 

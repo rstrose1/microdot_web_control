@@ -73,7 +73,7 @@ class VoltageSensor(object):
                         pass
                     """
 
-            await uasyncio.sleep(.01)  # Sleep for a short time to allow other tasks to run
+            await uasyncio.sleep(0)  # Sleep for a short time to allow other tasks to run
 
 async def detect_voltage(threshold_volt_ref, sampling_rate):
     ADC_CHANNEL = 0
