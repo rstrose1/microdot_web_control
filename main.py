@@ -10,17 +10,19 @@ from WebServer.ResponseBuilder import ResponseBuilder
 from Wifi.WiFiConnection import WiFiConnection
 from IoHandler import IoHandler
 from VoltageSensor.detect_voltage_pico import VoltageSensor
+from VoltageSensor.detect_voltage_mcp3008 import MCP3008
 from PressureSensor.detect_pressure_pico import PressureSensor
 from Bluetooth.Bluetooth import Bluetooth
 from sys import path
 import Email.umail as umail
 import time
-from machine import Pin
 import bluetooth
 from Bluetooth.bluetooth_peripheral import BLESimplePeripheral
 from ucollections import deque
 from buzzer import Buzzer
 from blink import LED
+from machine import Pin, SPI
+
 
 FLASK_TEMPLATE_DIR = "/WebServer/templates/"
 GAUGE_HTML_FILE = "gauge1.html"
@@ -261,9 +263,39 @@ async def setup_wifi_connection(ble_deque, notify_deque):
         except:
             break
 
-async def detect_voltage(ble_deque, notify_deque):
+
+async def detect_mcp3008_voltage(ble_deque, notify_deque):
     """
     Monitors the voltage sensor using the MCP3008 ADC and updates a message deque with status messages.
+
+    Args:
+        msg_deque (collections.deque): A deque to store status messages for Bluetooth communication.
+    """
+
+    str = "Setting up MCP3008 ADC for voltage sensor..\n"
+    ble_deque.append(str)
+
+    spi = SPI(0, sck=Pin(2),mosi=Pin(3),miso=Pin(4), baudrate=100000)
+    cs = Pin(22, Pin.OUT)
+    cs.value(1) # disable chip at start
+    try:
+
+        chip = MCP3008(spi, cs)
+        chip.samples.clear()
+
+        str = "Start the voltage sensor monitoring \n"
+        ble_deque.append(str)
+        await chip.monitor_voltage_sensor()
+
+    except KeyboardInterrupt:
+        pass
+
+    except:
+        print("Some error/exception occurred")
+
+async def detect_voltage(ble_deque, notify_deque):
+    """
+    Monitors the voltage sensor using the Pi Pico ADC and updates a message deque with status messages.
 
     Args:
         msg_deque (collections.deque): A deque to store status messages for Bluetooth communication.
@@ -273,7 +305,7 @@ async def detect_voltage(ble_deque, notify_deque):
     threshold_volt_ref = voltage_threshold
     sampling_rate = 120  # Hz
 
-    str = "Setting up MCP3008 ADC for voltage sensor..\n"
+    str = "Setting up Pi Pico ADC for voltage sensor..\n"
     ble_deque.append(str)
 
     try:
@@ -337,6 +369,19 @@ async def notifications(ble_deque, notify_deque):
                     print(f"Ip Address: {ip_address}")
                     str = f"IP Address: http://{ip_address}/\n"
                     ble_deque.append(str)
+
+                elif 'adc' in get_notify_msg: # for
+                    num_display = 20
+                    for i in range(num_display):
+                        average_adc_value = await get_voltage_reading()
+                        if average_adc_value < voltage_threshold:
+                            status = "pump is ON"
+                        else:
+                            status = "pump is OFF"
+                        str = f"Voltage sensor ({i+1} of {num_display}): {average_adc_value:.2f} V \n"
+                        # append the voltage status to the BLE deque
+                        ble_deque.append(str)
+                        await uasyncio.sleep(0)
 
                 elif 'volts' in get_notify_msg: # for
                     num_display = 20
@@ -414,7 +459,8 @@ async def main():
     print("Starting notifications")
     uasyncio.create_task(notifications(ble_deque, notify_deque))
     print("Starting voltage sensor")
-    uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
+    #uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
+    uasyncio.create_task(detect_mcp3008_voltage(ble_deque, notify_deque))
     print("Starting pressure sensor")
     uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
     print("Starting BlueTooth")

@@ -65,6 +65,35 @@ class MCP3008:
         self.cs.value(1) # turn off
         return ((self._in_buf[1] & 0x03) << 8) | self._in_buf[2]
 
+    async def monitor_voltage_sensor(self):
+        """
+        Monitor the voltage sensor and print the readings.
+        This method will run indefinitely until stopped.
+        """
+        spinner = "|/-\\"
+        spinner_index = 0
+
+        self.samples.clear()
+
+        while True:
+
+            actual = self.read(0)
+
+            # Add the voltage to a list for sampling
+            self.samples.append(actual)
+
+            # Calculate the average voltage from the sample readings
+            if len(self.samples) >= self.sampling_rate:
+                voltage = sum(self.samples) / len(self.samples)
+                max_value = max(self.samples)
+                min_value = min(self.samples)
+
+                print(f"Actual:{voltage:.2f} Max:{max_value:.2f} Min:{min_value:.2f} {spinner[spinner_index]} ")
+                spinner_index = (spinner_index + 1) % len(spinner)
+                self.samples.clear()
+
+            await uasyncio.sleep(0)
+
 
 async def detect_voltage(threshold_volt_ref, sampling_rate):
     spi = SPI(0, sck=Pin(2),mosi=Pin(3),miso=Pin(4), baudrate=100000)
