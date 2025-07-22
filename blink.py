@@ -12,23 +12,36 @@ class LED:
     def off(self):
         self.pin.off()
 
+    def on(self):
+        self.pin.on()
+
+    def toggle_led(self):
+        while True:
+            self.pin.toggle()  # Toggle the LED state (on/off)
+            sleep(0.5)   # Delay for 0.5 seconds
 
     def flash_onboard_led(self):
         print("LED starts flashing...")
+        pin = Pin("LED", Pin.OUT)  # Use the onboard LED pin
+        pin.off()  # Ensure the LED is off initially
         while True:
             try:
-                self.pin.toggle()
+                pin.toggle()
                 sleep(1) # sleep 1sec
             except KeyboardInterrupt:
                 break
-            self.pin.off()
+            pin.off()
             sleep(1)
 
 
 # Main function
 async def led_test():
-    led = LED("LED")  # Initialize LED on the onboard pin
-    led.flash_onboard_led ()  # Start flashing the LED
+#    led = LED("LED")  # Initialize LED on the onboard pin
+#    led.flash_onboard_led ()  # Start flashing the LED
+    led = LED("GP13")  # Initialize LED on a specific GPIO pin (e.g., GP13)
+    led.off()  # Turn the LED off
+    led.toggle_led()  # Start toggling the LED state
+    led.off()  # Ensure the LED is off before starting
     return
 
 
