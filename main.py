@@ -276,10 +276,6 @@ async def detect_mcp3008_voltage(ble_deque, notify_deque, mcp3008):
     ble_deque.append(str)
 
     try:
-        mcp3008.samples.clear()
-
-        str = "Start the voltage sensor monitoring \n"
-        ble_deque.append(str)
         await mcp3008.monitor_voltage_sensor()
 
     except KeyboardInterrupt:
@@ -377,7 +373,7 @@ async def notifications(ble_deque, notify_deque, mcp3008=None):
                             str = f"Voltage sensor ({i+1} of {num_display}): {average_adc_value:.2f} \n"
                             # append the voltage status to the BLE deque
                             ble_deque.append(str)
-                            await uasyncio.sleep(0)
+                            await uasyncio.sleep(1)
                     else:
                         ble_deque.append("MCP3008 instance is not available.\n")
 

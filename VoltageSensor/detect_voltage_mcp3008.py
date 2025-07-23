@@ -48,6 +48,8 @@ class MCP3008:
 
     def get_adc_reading(self):
         """Returns the MCP3xxx's actual value."""
+
+        print(f"avg actual val:{self.avg_actual_value}")
         return self.avg_actual_value
 
     def read(self, pin, is_differential=False):
@@ -79,6 +81,7 @@ class MCP3008:
         spinner_index = 0
 
         self.samples.clear()
+        self.avg_actual_value = 0
 
         while True:
 
