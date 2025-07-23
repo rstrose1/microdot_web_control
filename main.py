@@ -264,7 +264,7 @@ async def setup_wifi_connection(ble_deque, notify_deque):
             break
 
 
-async def detect_mcp3008_voltage(ble_deque, notify_deque):
+async def detect_mcp3008_voltage(ble_deque, notify_deque, mcp3008):
     """
     Monitors the voltage sensor using the MCP3008 ADC and updates a message deque with status messages.
 
@@ -275,17 +275,12 @@ async def detect_mcp3008_voltage(ble_deque, notify_deque):
     str = "Setting up MCP3008 ADC for voltage sensor..\n"
     ble_deque.append(str)
 
-    spi = SPI(0, sck=Pin(2),mosi=Pin(3),miso=Pin(4), baudrate=100000)
-    cs = Pin(22, Pin.OUT)
-    cs.value(1) # disable chip at start
     try:
-
-        chip = MCP3008(spi, cs)
-        chip.samples.clear()
+        mcp3008.samples.clear()
 
         str = "Start the voltage sensor monitoring \n"
         ble_deque.append(str)
-        await chip.monitor_voltage_sensor()
+        await mcp3008.monitor_voltage_sensor()
 
     except KeyboardInterrupt:
         pass
@@ -332,7 +327,7 @@ def alert_user_via_email(msg):
         email_flag = True
     return
 
-async def notifications(ble_deque, notify_deque):
+async def notifications(ble_deque, notify_deque, mcp3008=None):
     """ Start an infinite loop to check the message deque """
     global email_flag
     global ssid
@@ -372,16 +367,19 @@ async def notifications(ble_deque, notify_deque):
 
                 elif 'adc' in get_notify_msg: # for
                     num_display = 20
-                    for i in range(num_display):
-                        average_adc_value = await get_voltage_reading()
-                        if average_adc_value < voltage_threshold:
-                            status = "pump is ON"
-                        else:
-                            status = "pump is OFF"
-                        str = f"Voltage sensor ({i+1} of {num_display}): {average_adc_value:.2f} V \n"
-                        # append the voltage status to the BLE deque
-                        ble_deque.append(str)
-                        await uasyncio.sleep(0)
+                    if mcp3008 is not None:
+                        for i in range(num_display):
+                            average_adc_value = mcp3008.get_adc_reading()
+                            if average_adc_value < voltage_threshold:
+                                status = "pump is ON"
+                            else:
+                                status = "pump is OFF"
+                            str = f"Voltage sensor ({i+1} of {num_display}): {average_adc_value:.2f} \n"
+                            # append the voltage status to the BLE deque
+                            ble_deque.append(str)
+                            await uasyncio.sleep(0)
+                    else:
+                        ble_deque.append("MCP3008 instance is not available.\n")
 
                 elif 'volts' in get_notify_msg: # for
                     num_display = 20
@@ -415,7 +413,7 @@ async def notifications(ble_deque, notify_deque):
                     await speaker.set_alarm(1000)  # Set alarm frequency to 1000Hz
 
                 else:
-                    #print(f"unknown data {get_notify_msg}\n")
+                    print(f"Unknown data {get_notify_msg}\n")
                     pass
 
                 #need to handle cases for turning on external led and/or buzzer
@@ -456,11 +454,17 @@ async def main():
     global max_psi
     global min_psi
 
+    spi = SPI(0, sck=Pin(2),mosi=Pin(3),miso=Pin(4), baudrate=100000)
+    cs = Pin(22, Pin.OUT)
+    cs.value(1) # disable chip at start
+    mcp3008 = MCP3008(spi, cs)
+
+
     print("Starting notifications")
-    uasyncio.create_task(notifications(ble_deque, notify_deque))
+    uasyncio.create_task(notifications(ble_deque, notify_deque, mcp3008))
     print("Starting voltage sensor")
     #uasyncio.create_task(detect_voltage(ble_deque, notify_deque))
-    uasyncio.create_task(detect_mcp3008_voltage(ble_deque, notify_deque))
+    uasyncio.create_task(detect_mcp3008_voltage(ble_deque, notify_deque, mcp3008))
     print("Starting pressure sensor")
     uasyncio.create_task(detect_pressure(ble_deque, notify_deque))
     print("Starting BlueTooth")

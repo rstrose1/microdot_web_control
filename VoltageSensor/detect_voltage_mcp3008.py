@@ -30,6 +30,7 @@ class MCP3008:
             cs:  pin to use for chip select
             ref_voltage: r
         """
+        self.avg_actual_value = 0
         self.cs = cs
         self.cs.value(1) # ncs on
         self._spi = spi
@@ -44,6 +45,10 @@ class MCP3008:
     def reference_voltage(self) -> float:
         """Returns the MCP3xxx's reference voltage as a float."""
         return self._ref_voltage
+
+    def get_adc_reading(self):
+        """Returns the MCP3xxx's actual value."""
+        return self.avg_actual_value
 
     def read(self, pin, is_differential=False):
         """
@@ -84,17 +89,17 @@ class MCP3008:
 
             # Calculate the average voltage from the sample readings
             if len(self.samples) >= self.sampling_rate:
-                voltage = sum(self.samples) / len(self.samples)
+                self.avg_actual_value = sum(self.samples) / len(self.samples)
                 max_value = max(self.samples)
                 min_value = min(self.samples)
 
-                print(f"Actual:{voltage:.2f} Max:{max_value:.2f} Min:{min_value:.2f} {spinner[spinner_index]} ")
-                spinner_index = (spinner_index + 1) % len(spinner)
+                #print(f"Actual:{self.avg_actual_value:.2f} Max:{max_value:.2f} Min:{min_value:.2f} {spinner[spinner_index]} ")
+                #spinner_index = (spinner_index + 1) % len(spinner)
                 self.samples.clear()
 
             await uasyncio.sleep(0)
 
-
+"""
 async def detect_voltage(threshold_volt_ref, sampling_rate):
     spi = SPI(0, sck=Pin(2),mosi=Pin(3),miso=Pin(4), baudrate=100000)
     cs = Pin(22, Pin.OUT)
@@ -159,4 +164,4 @@ if __name__ == '__main__':
         print("running finally block")
         uasyncio.new_event_loop()
 
-
+"""

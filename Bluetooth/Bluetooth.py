@@ -60,12 +60,16 @@ class Bluetooth(object):
         elif 'password' in data:
             self.append_to_deque(data)
 
-        # User passed max psi over bluetooth connection
+        # User passed max psi over request bluetooth connection
         elif 'max' in data:
             self.append_to_deque(data)
 
-        # User passed min psi over bluetooth connection
+        # User passed min psi request over bluetooth connection
         elif 'min' in data:
+            self.append_to_deque(data)
+
+        # User passed get adc value request over bluetooth connection
+        elif 'adc' in data:
             self.append_to_deque(data)
 
         else:
