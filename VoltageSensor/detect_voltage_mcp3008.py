@@ -72,7 +72,7 @@ class MCP3008:
         self.cs.value(1) # turn off
         return ((self._in_buf[1] & 0x03) << 8) | self._in_buf[2]
 
-    async def monitor_voltage_sensor(self):
+    async def monitor_voltage_sensor(self, debug=False):
         """
         Monitor the voltage sensor and print the readings.
         This method will run indefinitely until stopped.
@@ -85,65 +85,44 @@ class MCP3008:
 
         while True:
 
-            actual = self.read(0)
+            for i in range(2):
+                actual = self.read(i)
 
-            # Add the voltage to a list for sampling
-            self.samples.append(actual)
+                # Add the voltage to a list for sampling
+                self.samples.append(actual)
 
-            # Calculate the average voltage from the sample readings
-            if len(self.samples) >= self.sampling_rate:
-                self.avg_actual_value = sum(self.samples) / len(self.samples)
-                max_value = max(self.samples)
-                min_value = min(self.samples)
+                # Calculate the average voltage from the sample readings
+                if len(self.samples) >= self.sampling_rate:
+                    self.avg_actual_value = sum(self.samples) / len(self.samples)
+                    max_value = max(self.samples)
+                    min_value = min(self.samples)
 
-                #print(f"Actual:{self.avg_actual_value:.2f} Max:{max_value:.2f} Min:{min_value:.2f} {spinner[spinner_index]} ")
-                #spinner_index = (spinner_index + 1) % len(spinner)
-                self.samples.clear()
+                    if debug:
+                        print(f"Actual:{self.avg_actual_value:.2f} Max:{max_value:.2f} Min:{min_value:.2f} {spinner[spinner_index]} ")
+                        spinner_index = (spinner_index + 1) % len(spinner)
+                        print("\33[2A")
 
-            await uasyncio.sleep(0)
 
-"""
+                    self.samples.clear()
+
+            await uasyncio.sleep(0)  # Sleep for a short time to allow other tasks to run
+
+
 async def detect_voltage(threshold_volt_ref, sampling_rate):
     spi = SPI(0, sck=Pin(2),mosi=Pin(3),miso=Pin(4), baudrate=100000)
     cs = Pin(22, Pin.OUT)
-    #cs = Pin(17, Pin.OUT)
     cs.value(1) # disable chip at start
 
-    square = Pin(21, Pin.OUT)
+    mcp3008 = MCP3008(spi, cs)
 
-    chip = MCP3008(spi, cs)
+    try:
+        await mcp3008.monitor_voltage_sensor(True)
 
-    chip.samples.clear()
+    except KeyboardInterrupt:
+        pass
 
-    spinner = "|/-\\"
-    spinner_index = 0
-
-    while True:
-        #square.value(1)
-        #square.on()
-        actual = chip.read(0)
-        # Add the voltage to a list for sampling
-        chip.samples.append(actual)
-
-    # Calculate the average voltage from the sample readings
-        if (len(chip.samples) >= chip.sampling_rate):
-            voltage = sum(chip.samples) / len(chip.samples)
-            max_value = max(chip.samples)
-            min_value = min(chip.samples)
-
-            print(f"Actual:{voltage} Max:{max_value} Min:{min_value}  {spinner[spinner_index]} ")
-            print("\33[2A")
-
-            chip.samples.clear()
-        #print(actual)
-        #sleep(.25)
-        #square.value(0)
-        #square.off()
-        #actual = chip.read(0)
-        #print(actual)
-        #sleep(.25)
-
-        await uasyncio.sleep(0)  # Sleep for a short time to allow other tasks to run
+    except:
+        print("Some error/exception occurred")
 
 
 async def main():
@@ -167,4 +146,4 @@ if __name__ == '__main__':
         print("running finally block")
         uasyncio.new_event_loop()
 
-"""
+
