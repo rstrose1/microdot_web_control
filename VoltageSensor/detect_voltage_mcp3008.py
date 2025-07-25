@@ -82,30 +82,52 @@ class MCP3008:
 
         self.samples.clear()
         self.avg_actual_value = 0
+        lowest_avg_value = 0
+        highest_avg_value = 0
+
+        state_threshold = 175 # threshold for state change, adjust as needed
+
+        state = "OFF"  # initial state
+        state_rec = "OFF"  # record the last state to detect changes
 
         while True:
 
-            for i in range(2):
-                actual = self.read(i)
+            actual = self.read(1)
 
-                # Add the voltage to a list for sampling
-                self.samples.append(actual)
+            # Add the voltage to a list for sampling
+            self.samples.append(actual)
 
-                # Calculate the average voltage from the sample readings
-                if len(self.samples) >= self.sampling_rate:
-                    self.avg_actual_value = sum(self.samples) / len(self.samples)
-                    max_value = max(self.samples)
-                    min_value = min(self.samples)
+            # Calculate the average voltage from the sample readings
+            if len(self.samples) >= self.sampling_rate:
+                self.avg_actual_value = int(sum(self.samples) / len(self.samples))
+                max_value = max(self.samples)
+                min_value = min(self.samples)
+                if debug:
 
-                    if debug:
-                        print(f"Actual:{self.avg_actual_value:.2f} Max:{max_value:.2f} Min:{min_value:.2f} {spinner[spinner_index]} ")
-                        spinner_index = (spinner_index + 1) % len(spinner)
-                        print("\33[2A")
+                    if self.avg_actual_value < state_threshold and self.avg_actual_value > 100:
+                        state = "ON"
+                    else:
+                        state = "OFF"
 
+                    if state_rec is not state:
+                        state_rec = state
+                        # reset the lowest and highest values
+                        highest_avg_value = 0
+                        lowest_avg_value = 0
 
-                    self.samples.clear()
+                    if lowest_avg_value == 0 or self.avg_actual_value < lowest_avg_value:
+                        lowest_avg_value = self.avg_actual_value
+                    if highest_avg_value == 0 or self.avg_actual_value > highest_avg_value:
+                        highest_avg_value = self.avg_actual_value
 
-            await uasyncio.sleep(0)  # Sleep for a short time to allow other tasks to run
+                    #print(f"Actual:{self.avg_actual_value} Max:{max_value} Min:{min_value} {spinner[spinner_index]} ")
+                    print(f"Actual:{self.avg_actual_value} Lowest avg:{lowest_avg_value} Highest avg:{highest_avg_value} State: {state} {spinner[spinner_index]} ")
+                    spinner_index = (spinner_index + 1) % len(spinner)
+                    print("\33[2A")
+
+                self.samples.clear()
+
+            await uasyncio.sleep(.01)  # Sleep for a short time to allow other tasks to run
 
 
 async def detect_voltage(threshold_volt_ref, sampling_rate):
@@ -114,6 +136,7 @@ async def detect_voltage(threshold_volt_ref, sampling_rate):
     cs.value(1) # disable chip at start
 
     mcp3008 = MCP3008(spi, cs)
+    debug = True
 
     try:
         await mcp3008.monitor_voltage_sensor(True)
