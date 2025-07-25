@@ -56,6 +56,7 @@ email = ''
 send_bluetooth_flag = False
 email_subject ='Hello from RPi Pico W'
 voltage_threshold = 3.14  # Voltage threshold for pump status
+adc_threshold = 175  # ADC threshold for pump status
 
 def prepare_email(msg):
     """
@@ -323,6 +324,33 @@ def alert_user_via_email(msg):
         email_flag = True
     return
 
+async def get_zone_info(zone_num, ble_deque, mcp3008):
+
+    print(f"Getting zone {zone_num} info")
+
+    num_display = 20
+    if mcp3008 is not None:
+
+        for i in range(num_display):
+            average_adc_value = mcp3008.get_adc_reading(zone_num)
+            # NOISY SIGNAL !!! SO HAVE TO FILTER IT OUT ONE DAY
+            # Reverses is using direct DC current from the wall socket
+            # or using a pure dc power supply
+            #if average_adc_value < adc_threshold and average_adc_value > 100: # pure DC
+
+            # noisy DC signal from the wall socket
+            if average_adc_value > adc_threshold and average_adc_value > 100:
+                status = "ON"
+            else:
+                status = "OFF"
+            str = f"Volt sensor[{zone_num}] ({i+1} of {num_display}): ADC: {average_adc_value} status: {status}\n"
+            # append the voltage status to the BLE deque
+            ble_deque.append(str)
+            await uasyncio.sleep(1)
+    else:
+        ble_deque.append("MCP3008 instance is not available.\n")
+
+
 async def notifications(ble_deque, notify_deque, mcp3008=None):
     """ Start an infinite loop to check the message deque """
     global email_flag
@@ -361,42 +389,35 @@ async def notifications(ble_deque, notify_deque, mcp3008=None):
                     str = f"IP Address: http://{ip_address}/\n"
                     ble_deque.append(str)
 
-                elif 'adc' in get_notify_msg: # for
-                    num_display = 20
-                    if mcp3008 is not None:
-                        for i in range(num_display):
-                            average_adc_value = mcp3008.get_adc_reading()
-                            if average_adc_value < voltage_threshold:
-                                status = "pump is ON"
-                            else:
-                                status = "pump is OFF"
-                            str = f"Voltage sensor ({i+1} of {num_display}): {average_adc_value:.2f} \n"
-                            # append the voltage status to the BLE deque
-                            ble_deque.append(str)
-                            await uasyncio.sleep(1)
-                    else:
-                        ble_deque.append("MCP3008 instance is not available.\n")
+                elif 'zone1' in get_notify_msg:
+                    await get_zone_info(1, ble_deque, mcp3008)
+                elif 'zone2' in get_notify_msg:
+                    await get_zone_info(2, ble_deque, mcp3008)
+                elif 'zone3' in get_notify_msg:
+                    await get_zone_info(3, ble_deque, mcp3008)
+                elif 'zone4' in get_notify_msg:
+                    await get_zone_info(4, ble_deque, mcp3008)
 
-                elif 'volts' in get_notify_msg: # for
+                elif 'volts' in get_notify_msg: # not currently used
                     num_display = 20
                     for i in range(num_display):
-                        average_voltage = await get_voltage_reading()
-                        if average_voltage < voltage_threshold:
-                            status = "pump is ON"
+                        average_adc_value = await get_voltage_reading()
+                        if average_adc_value < adc_threshold:
+                            status = "ON"
                         else:
-                            status = "pump is OFF"
-                        str = f"Voltage sensor ({i+1} of {num_display}): {average_voltage:.2f} V \n"
+                            status = "OFF"
+                        str = f"Voltage sensor ({i+1} of {num_display}): ADC:{average_adc_value} Pump Status: {status} \n"
                         # append the voltage status to the BLE deque
                         ble_deque.append(str)
                         await uasyncio.sleep(0)
 
-                elif 'volt' in get_notify_msg:
+                elif 'volt' in get_notify_msg: # not currently used
                     average_voltage = await get_voltage_reading()
                     if average_voltage < voltage_threshold:
                         status = "pump is ON"
                     else:
                         status = "pump is OFF"
-                    str = f"Voltage sensor: {average_voltage:.2f} V - {status} \n"
+                    str = f"Volt sensor: {average_voltage:.2f} V - {status} \n"
                     # append the voltage status to the BLE deque
                     ble_deque.append(str)
 

@@ -72,6 +72,16 @@ class Bluetooth(object):
         elif 'adc' in data:
             self.append_to_deque(data)
 
+        # User passed get zone adc value request over bluetooth connection
+        elif 'zone1' in data:
+            self.append_to_deque(data)
+        elif 'zone2' in data:
+            self.append_to_deque(data)
+        elif 'zone3' in data:
+            self.append_to_deque(data)
+        elif 'zone4' in data:
+            self.append_to_deque(data)
+
         else:
             print("unknown data\n")
 

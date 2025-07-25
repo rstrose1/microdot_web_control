@@ -30,7 +30,7 @@ class MCP3008:
             cs:  pin to use for chip select
             ref_voltage: r
         """
-        self.avg_actual_value = 0
+        self.avg_actual_value = [0, 0, 0, 0, 0, 0, 0, 0]  # average actual value for each channel
         self.cs = cs
         self.cs.value(1) # ncs on
         self._spi = spi
@@ -46,11 +46,14 @@ class MCP3008:
         """Returns the MCP3xxx's reference voltage as a float."""
         return self._ref_voltage
 
-    def get_adc_reading(self):
+    def get_adc_reading(self, zone=1):
         """Returns the MCP3xxx's actual value."""
 
-        print(f"avg actual val:{self.avg_actual_value}")
-        return self.avg_actual_value
+        #print(f"avg actual val:{self.avg_actual_value}")
+        if not self.avg_actual_value:
+            return None
+
+        return self.avg_actual_value[zone - 1]
 
     def read(self, pin, is_differential=False):
         """
@@ -81,9 +84,9 @@ class MCP3008:
         spinner_index = 0
 
         self.samples.clear()
-        self.avg_actual_value = 0
-        lowest_avg_value = 0
-        highest_avg_value = 0
+
+        lowest_avg_value=[0, 0, 0, 0, 0, 0, 0, 0]
+        highest_avg_value = [0, 0, 0, 0, 0, 0, 0, 0]
 
         state_threshold = 175 # threshold for state change, adjust as needed
 
@@ -91,20 +94,23 @@ class MCP3008:
         state_rec = "OFF"  # record the last state to detect changes
 
         while True:
+            for i in range(2):  # MCP3008 has 8 channels
+                while len(self.samples) < self.sampling_rate:
+                    actual = self.read(i)
 
-            actual = self.read(1)
+                    # Add the voltage to a list for sampling
+                    self.samples.append(actual)
 
-            # Add the voltage to a list for sampling
-            self.samples.append(actual)
+                    await uasyncio.sleep(0)
 
-            # Calculate the average voltage from the sample readings
-            if len(self.samples) >= self.sampling_rate:
-                self.avg_actual_value = int(sum(self.samples) / len(self.samples))
+                    # Calculate the average voltage from the sample readings
+
+                self.avg_actual_value[i] = int(sum(self.samples) / len(self.samples))
                 max_value = max(self.samples)
                 min_value = min(self.samples)
                 if debug:
 
-                    if self.avg_actual_value < state_threshold and self.avg_actual_value > 100:
+                    if self.avg_actual_value[i] < state_threshold and self.avg_actual_value[i] > 100:
                         state = "ON"
                     else:
                         state = "OFF"
@@ -112,16 +118,16 @@ class MCP3008:
                     if state_rec is not state:
                         state_rec = state
                         # reset the lowest and highest values
-                        highest_avg_value = 0
-                        lowest_avg_value = 0
+                        highest_avg_value[i] = 0
+                        lowest_avg_value[i] = 0
 
-                    if lowest_avg_value == 0 or self.avg_actual_value < lowest_avg_value:
-                        lowest_avg_value = self.avg_actual_value
-                    if highest_avg_value == 0 or self.avg_actual_value > highest_avg_value:
-                        highest_avg_value = self.avg_actual_value
+                    if lowest_avg_value[i] == 0 or self.avg_actual_value[i] < lowest_avg_value[i]:
+                        lowest_avg_value[i] = self.avg_actual_value[i]
+                    if highest_avg_value[i] == 0 or self.avg_actual_value[i] > highest_avg_value[i]:
+                        highest_avg_value[i] = self.avg_actual_value[i]
 
                     #print(f"Actual:{self.avg_actual_value} Max:{max_value} Min:{min_value} {spinner[spinner_index]} ")
-                    print(f"Actual:{self.avg_actual_value} Lowest avg:{lowest_avg_value} Highest avg:{highest_avg_value} State: {state} {spinner[spinner_index]} ")
+                    print(f"Actual {i}:{self.avg_actual_value[i]} Lowest avg:{lowest_avg_value[i]} Highest avg:{highest_avg_value[i]} State: {state} {spinner[spinner_index]} ")
                     spinner_index = (spinner_index + 1) % len(spinner)
                     print("\33[2A")
 
